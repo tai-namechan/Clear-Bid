@@ -1,0 +1,237 @@
+export interface SafetyRule {
+  id: string
+  version: number
+  classification: 'BLOCK' | 'CHECK' | 'INFO'
+  category: 'payment' | 'safety' | 'budget' | 'scope' | 'client' | 'time'
+  reason: string
+  patterns: RegExp[]
+  requiresQuote: boolean
+}
+
+function re(source: string, flags = ''): RegExp {
+  return new RegExp(source, flags)
+}
+
+/**
+ * Initial safety rule catalog (spec §6.2).
+ * Keyword dictionaries live here as config data, not scattered in prompts.
+ */
+export const SAFETY_RULES: SafetyRule[] = [
+  {
+    id: 'PAY-01',
+    version: 1,
+    classification: 'BLOCK',
+    category: 'payment',
+    reason: '仮払い・契約前の作業開始を要求しています',
+    patterns: [
+      re('仮払[いイ].{0,12}(前|前に).{0,8}(作業|着手|開始)'),
+      re('契約前.{0,10}(作業|着手)'),
+      re('先に.{0,6}作(って|ってください|成)'),
+      re('前払[いイ]なし.{0,10}作業'),
+    ],
+    requiresQuote: true,
+  },
+  {
+    id: 'PAY-02',
+    version: 1,
+    classification: 'BLOCK',
+    category: 'payment',
+    reason: '教材購入・登録料・保証金等の費用請求があります',
+    patterns: [
+      re('登録料'),
+      re('保証金'),
+      re('教材.{0,6}購入'),
+      re('参加費'),
+      re('初期費用.{0,8}お支払'),
+      re('自己負担'),
+    ],
+    requiresQuote: true,
+  },
+  {
+    id: 'PAY-03',
+    version: 1,
+    classification: 'BLOCK',
+    category: 'payment',
+    reason: '無料制作後に正式発注する条件です',
+    patterns: [
+      re('無料.{0,8}(制作|作成|テスト).{0,12}(良ければ|よければ|気に入)'),
+      re('テスト制作.{0,8}無料'),
+      re('無償で.{0,8}作'),
+    ],
+    requiresQuote: true,
+  },
+  {
+    id: 'PAY-04',
+    version: 1,
+    classification: 'CHECK',
+    category: 'payment',
+    reason: '長期開発の完成後一括払いの可能性があります',
+    patterns: [re('完成後.{0,6}(一括|まとめて).{0,4}払'), re('納品後一括')],
+    requiresQuote: true,
+  },
+  {
+    id: 'SAFE-01',
+    version: 1,
+    classification: 'BLOCK',
+    category: 'safety',
+    reason: '契約前の過剰な個人情報要求があります',
+    patterns: [re('身分証.{0,8}(送|提出)'), re('マイナンバー'), re('口座番号.{0,8}(教|送|提出)')],
+    requiresQuote: true,
+  },
+  {
+    id: 'SAFE-02',
+    version: 1,
+    classification: 'BLOCK',
+    category: 'safety',
+    reason: '不正レビュー・不正フォロー等の依頼の疑いがあります',
+    patterns: [re('サクラ'), re('偽レビュー'), re('不正.{0,6}(レビュー|評価|フォロー)'), re('ステマ')],
+    requiresQuote: true,
+  },
+  {
+    id: 'SAFE-03',
+    version: 1,
+    classification: 'BLOCK',
+    category: 'safety',
+    reason: '規約に反する外部誘導の可能性があります',
+    patterns: [re('直接取引'), re('手数料.{0,6}回避'), re('プラットフォーム外で支払')],
+    requiresQuote: true,
+  },
+  {
+    id: 'SAFE-04',
+    version: 1,
+    classification: 'CHECK',
+    category: 'safety',
+    reason: 'LINE等への早期誘導があります。規約と外部連絡申請を確認してください',
+    patterns: [re('LINEで連絡'), re('ラインで'), re('Discordで.{0,6}連絡'), re('Slackで.{0,6}連絡')],
+    requiresQuote: true,
+  },
+  {
+    id: 'SAFE-05',
+    version: 1,
+    classification: 'BLOCK',
+    category: 'safety',
+    reason: '「誰でも簡単に稼げる」等の勧誘案件です',
+    patterns: [re('誰でも簡単に稼'), re('必ず稼げ'), re('不労所得'), re('楽して稼')],
+    requiresQuote: true,
+  },
+  {
+    id: 'BUD-01',
+    version: 1,
+    classification: 'INFO',
+    category: 'budget',
+    reason: '予算が未記載または応相談です。質問へ変換してください',
+    patterns: [re('応相談'), re('予算未定'), re('金額は相談')],
+    requiresQuote: false,
+  },
+  {
+    id: 'BUD-03',
+    version: 1,
+    classification: 'BLOCK',
+    category: 'budget',
+    reason: '無料・著しく低額なテスト制作の要求があります',
+    patterns: [re('無料でテスト'), re('無償テスト'), re('0円で')],
+    requiresQuote: true,
+  },
+  {
+    id: 'BUD-04',
+    version: 1,
+    classification: 'CHECK',
+    category: 'budget',
+    reason: '「実績作り」を理由に低額化している可能性があります',
+    patterns: [re('実績作り'), re('ポートフォリオ.{0,8}(代わり|として)'), re('安くても.{0,6}実績')],
+    requiresQuote: true,
+  },
+  {
+    id: 'SCP-01',
+    version: 1,
+    classification: 'INFO',
+    category: 'scope',
+    reason: '募集文が短く成果物を特定しにくい可能性があります',
+    patterns: [],
+    requiresQuote: false,
+  },
+  {
+    id: 'SCP-02',
+    version: 1,
+    classification: 'CHECK',
+    category: 'scope',
+    reason: '完了条件が曖昧です（「いい感じに」「お任せ」等）',
+    patterns: [re('いい感じに'), re('お任せします'), re('適当に'), re('なんとなく')],
+    requiresQuote: true,
+  },
+  {
+    id: 'SCP-03',
+    version: 1,
+    classification: 'CHECK',
+    category: 'scope',
+    reason: '「何でも」「その他必要な作業」など範囲が広い表現があります',
+    patterns: [re('何でも対応'), re('その他必要な作業'), re('一通りすべて'), re('諸々お任せ')],
+    requiresQuote: true,
+  },
+  {
+    id: 'SCP-04',
+    version: 1,
+    classification: 'CHECK',
+    category: 'scope',
+    reason: '固定価格の「一式」で機能数・画面数が不明です',
+    patterns: [re('開発一式'), re('制作一式'), re('システム一式'), re('サイト一式')],
+    requiresQuote: true,
+  },
+  {
+    id: 'SCP-05',
+    version: 1,
+    classification: 'CHECK',
+    category: 'scope',
+    reason: '修正回数・範囲が不明です',
+    patterns: [re('修正無制限'), re('納得いくまで修正'), re('何度でも修正')],
+    requiresQuote: true,
+  },
+  {
+    id: 'TIME-01',
+    version: 1,
+    classification: 'CHECK',
+    category: 'time',
+    reason: '即日・常時対応が求められている可能性があります',
+    patterns: [re('即日対応'), re('常時対応'), re('すぐに連絡が取れる'), re('即レス')],
+    requiresQuote: true,
+  },
+  {
+    id: 'TIME-02',
+    version: 1,
+    classification: 'CHECK',
+    category: 'time',
+    reason: '週3回以上のMTGが求められる可能性があります',
+    patterns: [
+      re('週[3-7３-７]回.{0,4}(MTG|ミーティング|打ち合わせ)'),
+      re('毎日.{0,4}(MTG|ミーティング)'),
+    ],
+    requiresQuote: true,
+  },
+  {
+    id: 'TIME-04',
+    version: 1,
+    classification: 'CHECK',
+    category: 'time',
+    reason: 'フルコミット前提の表現があります（副業では困難）',
+    patterns: [re('専任'), re('フルタイム相当'), re('本業並み'), re('稼働時間を確保できる方')],
+    requiresQuote: true,
+  },
+  {
+    id: 'TIME-05',
+    version: 1,
+    classification: 'CHECK',
+    category: 'time',
+    reason: '深夜・早朝連絡が前提の可能性があります',
+    patterns: [re('深夜対応'), re('早朝対応'), re('24時間連絡'), re('夜間対応必須')],
+    requiresQuote: true,
+  },
+  {
+    id: 'TIME-06',
+    version: 1,
+    classification: 'CHECK',
+    category: 'time',
+    reason: '24時間保守・障害対応が求められている可能性があります',
+    patterns: [re('24時間.{0,6}(保守|監視|障害)'), re('障害対応必須'), re('オンコール')],
+    requiresQuote: true,
+  },
+]
