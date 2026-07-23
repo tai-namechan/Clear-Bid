@@ -1,0 +1,41 @@
+---
+description: サイト全体のデザイン統一ルール - Tailwind + Clear Bid トークン
+alwaysApply: true
+---
+
+# サイト全体のデザイン統一ルール
+
+## 前提
+
+- Tailwind CSS（`@nuxtjs/tailwindcss`）を使用する
+- モバイルファースト。コンテンツ最大幅 **430px**
+- デザイントークン / 共通クラスの正: `app/assets/css/main.css`
+- Clear Dawn の `resources/css/app.css` や shadcn/reka-ui 前提を持ち込まない
+
+## ブランド・カラー（仕様 §18）
+
+| 用途 | 方針 |
+|---|---|
+| Primary | Blue 600 系 |
+| Success | Green 600 系 |
+| Attention | Amber 500 系 |
+| Danger | Red 600 系 |
+| Background | Slate 50 |
+| Text | Slate 900 |
+
+- 判定ラベルは色だけでなく文言（必要ならアイコン）を併用する
+- スコアバーは使わない
+- AI 推定は事実と異なる背景色で区別する
+
+## 原則
+
+1. **共通クラスを優先する**: `cb-shell`, `cb-page`, `cb-card`, `cb-cta`, `cb-input` 等
+2. **直書き hex を増やさない**。既存ユーティリティ / 共通クラスで足りるか先に確認
+3. **1画面1主CTA**
+4. **既存クラスを安易に削除しない**（テストや見た目の回帰）
+
+## 新しいパターンを追加するとき
+
+1. 既存コンポーネントで足りるか確認
+2. 足りなければ `main.css` の共通クラスか Tailwind ユーティリティで追加
+3. ページ固有にはレイアウト調整のみ書く

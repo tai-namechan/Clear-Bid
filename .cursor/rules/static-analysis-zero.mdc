@@ -1,0 +1,28 @@
+---
+description: 静的解析エラーゼロ方針 - 型宣言・any禁止・await必須
+alwaysApply: true
+---
+
+# 静的解析エラーゼロ方針
+
+## 原則：「エディタ上でエラーが出るコードはコミットしない」
+
+## TypeScript / Vue
+
+### 1. 型定義
+- `any` 禁止。不明なら `unknown` + 型ガード
+- Props は `defineProps<T>()`、emit は `defineEmits<T>()`
+- 共有型は `shared/` から `import type`
+
+### 2. async / await
+- Promise を返す呼び出しには必ず `await`
+- `await` 漏れは偽の成功テストの原因になる
+
+### 3. import
+- 未使用 import を残さない
+- 型のみは `import type { ... }`
+
+## 自動チェック
+
+- 変更後は対象ファイルのエラーを確認する
+- **自分が導入したエラーは必ず修正。既存エラーは報告のみでよい**
