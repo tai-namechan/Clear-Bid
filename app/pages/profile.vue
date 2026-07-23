@@ -1,12 +1,26 @@
 <script setup lang="ts">
 import type { UserProfile } from '#shared/types'
 
-const { profile, saveProfile } = useClearBidStore()
+import { AI_USAGE_LIMITS } from '#shared/constants'
+import { currentPeriod } from '#shared/domain/usage'
+
+const { profile, saveProfile, usage } = useClearBidStore()
 const p = ref<UserProfile>({ ...profile.value })
 const ok = ref(false)
 const ns = ref('')
 const na = ref({ title: '', result: '' })
 const nn = ref('')
+
+const usageCounts = computed(() => {
+  const period = currentPeriod()
+  const u = usage.value.period === period ? usage.value : { counts: {} as Record<string, number> }
+  return {
+    extract: u.counts.extract || 0,
+    diagnose: u.counts.diagnose || 0,
+    proposal: u.counts.proposal || 0,
+    reply: u.counts.reply || 0,
+  }
+})
 
 watch(profile, (v) => {
   p.value = { ...v, skills: [...(v.skills || [])], achievements: [...(v.achievements || [])], ngConditions: [...(v.ngConditions || [])] }
@@ -157,6 +171,29 @@ function addNg() {
           追加
         </button>
       </div>
+    </section>
+
+    <section class="mb-4">
+      <p class="mb-2 text-[13px] font-bold text-slate-900">今月の AI 利用（Soft Gate）</p>
+      <div class="grid grid-cols-2 gap-1.5">
+        <div class="cb-card mb-0">
+          <p class="m-0 text-[11px] text-slate-500">抽出</p>
+          <p class="m-0 text-sm font-semibold text-slate-800">{{ usageCounts.extract }} / {{ AI_USAGE_LIMITS.extract }}</p>
+        </div>
+        <div class="cb-card mb-0">
+          <p class="m-0 text-[11px] text-slate-500">診断</p>
+          <p class="m-0 text-sm font-semibold text-slate-800">{{ usageCounts.diagnose }} / {{ AI_USAGE_LIMITS.diagnose }}</p>
+        </div>
+        <div class="cb-card mb-0">
+          <p class="m-0 text-[11px] text-slate-500">提案文</p>
+          <p class="m-0 text-sm font-semibold text-slate-800">{{ usageCounts.proposal }} / {{ AI_USAGE_LIMITS.proposal }}</p>
+        </div>
+        <div class="cb-card mb-0">
+          <p class="m-0 text-[11px] text-slate-500">返信支援</p>
+          <p class="m-0 text-sm font-semibold text-slate-800">{{ usageCounts.reply }} / {{ AI_USAGE_LIMITS.reply }}</p>
+        </div>
+      </div>
+      <p class="mt-2 text-[11px] text-slate-400">上限到達後も手動入力・既存データでの運用は継続できます。</p>
     </section>
 
     <button class="cb-cta mt-4" @click="doSave">{{ ok ? '✓ 保存しました' : '保存' }}</button>

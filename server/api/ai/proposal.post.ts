@@ -1,4 +1,4 @@
-import { DiagnosisResultSchema, ExtractionResultSchema, ProposalResultSchema } from '../../../shared/schemas/ai'
+import { DiagnosisResultSchema, ExtractionResultSchema, ProposalResultSchema, PROPOSAL_STRATEGIES } from '../../../shared/schemas/ai'
 import type { UserProfile } from '../../../shared/types'
 import { getAiProvider } from '../../ai/provider'
 import { createErrorBody } from '../../utils/errors'
@@ -9,15 +9,13 @@ export default defineEventHandler(async (event) => {
     diagnosis?: unknown
     extraction?: unknown
     profile?: UserProfile
+    forceStrategy?: string
   }>(event)
 
   if (!body?.title || !body?.profile) {
     setResponseStatus(event, 400)
     return createErrorBody({ code: 'VALIDATION_ERROR', message: '提案生成に必要な入力が不足しています' })
   }
-
-  const openBlocks = Array.isArray((body.diagnosis as { axes?: unknown })?.axes) // placeholder for type narrowing
-  void openBlocks
 
   const diagnosis = DiagnosisResultSchema.safeParse(body.diagnosis)
   const extraction = ExtractionResultSchema.safeParse(body.extraction)
@@ -26,8 +24,9 @@ export default defineEventHandler(async (event) => {
     return createErrorBody({ code: 'VALIDATION_ERROR', message: '提案入力の形式が不正です' })
   }
 
-  if (diagnosis.data.recommendation === 'skip') {
-    // Spec: BLOCK / skip candidates pause proposal generation; still allow user override via explicit call.
+  if (body.forceStrategy && !(PROPOSAL_STRATEGIES as readonly string[]).includes(body.forceStrategy)) {
+    setResponseStatus(event, 400)
+    return createErrorBody({ code: 'VALIDATION_ERROR', message: '不正な提案型です' })
   }
 
   const provider = getAiProvider()
@@ -36,6 +35,7 @@ export default defineEventHandler(async (event) => {
     diagnosis: diagnosis.data,
     extraction: extraction.data,
     profile: body.profile,
+    forceStrategy: body.forceStrategy,
   })
   const parsed = ProposalResultSchema.safeParse(result)
   if (!parsed.success) {

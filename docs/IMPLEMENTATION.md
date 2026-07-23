@@ -33,15 +33,15 @@ Based on Clear Bid MVP Spec v1.0.
 - BLOCK 解除（理由必須・履歴保持）
 - 診断バージョンを Opportunity に追記保存
 
-### Phase 3 — Acquisition support (MVP slice)
-- Proposal generation via AI provider interface
-- Fallback template when no external AI key is configured
-- Copy + separate “mark as applied” actions
+### Phase 3 — Acquisition support
+- Proposal generation via AI provider interface + fallback template
+- Copy と「応募済みとして記録」を分離（適用確認ダイアログ）
+- 提案型の指定再生成（課題解決型 / 実績・証拠型 / 進め方明確型）
+- 返信支援（貼り付け → 解析・回答案・条件変更検知）
+- 再診断導線（条件変更時は診断バージョンを追記）
+- AI 利用 Soft Gate（抽出 / 診断 / 提案 / 返信）とプロフィール上の残枠表示
 
 ## Deferred (最後にまとめて)
 - Cloudflare Access JWT auth
 - Live D1 repositories / migrations apply
 - External AI providers (Anthropic / Workers AI) wiring
-
-## Still open (Phase 3)
-- Reply assist / re-diagnose / usage counters / apply confirm dialog / strategy regenerate

@@ -12,11 +12,12 @@ import { STORAGE_KEYS } from '#shared/constants'
 
 const route = useRoute()
 const router = useRouter()
-const { profile, stats, saveStats, upsertOpportunity } = useClearBidStore()
+const { profile, stats, saveStats, upsertOpportunity, assertAiBudget, trackAiSuccess, trackAiFailure } = useClearBidStore()
 
 const step = ref(0)
 const loading = ref(false)
 const loadMsg = ref('')
+const regenerating = ref(false)
 const inp = ref<JobInput>({ ...INIT_JOB_INPUT })
 const ext = ref<ExtractionResult | null>(null)
 const safety = ref<SafetyFinding[]>([])
@@ -63,6 +64,12 @@ watch(
 
 async function doExtract() {
   if (!inp.value.title.trim() || !inp.value.body.trim()) return
+  try {
+    assertAiBudget('extract')
+  } catch (e) {
+    alert(e instanceof Error ? e.message : '利用上限です')
+    return
+  }
   loading.value = true
   loadMsg.value = '募集内容を整理しています...'
   try {
@@ -72,8 +79,10 @@ async function doExtract() {
     })
     ext.value = r
     step.value = 1
+    await trackAiSuccess('extract')
   } catch (e) {
     console.error(e)
+    await trackAiFailure('extract')
     alert('抽出に失敗しました。もう一度お試しください。')
   } finally {
     loading.value = false
@@ -114,6 +123,12 @@ async function doSafety() {
 
 async function doDiag() {
   if (!ext.value || !effort.value) return
+  try {
+    assertAiBudget('diagnose')
+  } catch (e) {
+    alert(e instanceof Error ? e.message : '利用上限です')
+    return
+  }
   loading.value = true
   loadMsg.value = '5軸で診断しています...'
   try {
@@ -143,18 +158,29 @@ async function doDiag() {
     diag.value = r
     step.value = 3
     await saveStats({ ...stats.value, diagnosed: stats.value.diagnosed + 1 })
+    await trackAiSuccess('diagnose')
   } catch (e) {
     console.error(e)
+    await trackAiFailure('diagnose')
     alert('診断に失敗しました。')
   } finally {
     loading.value = false
   }
 }
 
-async function doProposal() {
+async function doProposal(forceStrategy?: string) {
   if (!diag.value || !ext.value) return
-  loading.value = true
-  loadMsg.value = '提案文を作成しています...'
+  try {
+    assertAiBudget('proposal')
+  } catch (e) {
+    alert(e instanceof Error ? e.message : '利用上限です')
+    return
+  }
+  if (forceStrategy) regenerating.value = true
+  else {
+    loading.value = true
+    loadMsg.value = '提案文を作成しています...'
+  }
   try {
     const r = await $fetch<ProposalResult>('/api/ai/proposal', {
       method: 'POST',
@@ -163,15 +189,19 @@ async function doProposal() {
         diagnosis: diag.value,
         extraction: ext.value,
         profile: profile.value,
+        forceStrategy,
       },
     })
     proposal.value = r
     step.value = 4
+    await trackAiSuccess('proposal')
   } catch (e) {
     console.error(e)
+    await trackAiFailure('proposal')
     alert('提案文の生成に失敗しました。')
   } finally {
     loading.value = false
+    regenerating.value = false
   }
 }
 
@@ -300,8 +330,10 @@ async function doSkip(reason: string) {
     v-else
     :proposal="proposal"
     :copied="copied"
+    :regenerating="regenerating"
     @copy="doCopy"
     @apply="doApply"
+    @regenerate="doProposal"
     @back="step = 3"
   />
 </template>

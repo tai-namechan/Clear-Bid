@@ -1,12 +1,22 @@
 <script setup lang="ts">
 import { Icons } from '~/utils/icons'
+import { PROPOSAL_STRATEGIES } from '#shared/schemas/ai'
 import type { ProposalResult } from '#shared/schemas/ai'
 
 defineProps<{
   proposal: ProposalResult | null
   copied: boolean
+  regenerating?: boolean
 }>()
-defineEmits<{ copy: []; apply: []; back: [] }>()
+const emit = defineEmits<{
+  copy: []
+  apply: []
+  back: []
+  regenerate: [strategy: string]
+}>()
+
+const showApplyConfirm = ref(false)
+const regenStrategy = ref<string>('')
 </script>
 
 <template>
@@ -51,11 +61,40 @@ defineEmits<{ copy: []; apply: []; back: [] }>()
         </div>
       </div>
 
+      <div class="cb-card mb-2">
+        <p class="mb-2 text-[11px] font-semibold text-slate-500">別の型で再生成（利用枠を消費）</p>
+        <select v-model="regenStrategy" class="cb-input">
+          <option value="">型を選択...</option>
+          <option v-for="s in PROPOSAL_STRATEGIES" :key="s" :value="s" :disabled="s === proposal.strategy">
+            {{ s }}
+          </option>
+        </select>
+        <button
+          class="cb-outline-btn mt-0"
+          :disabled="!regenStrategy || regenerating"
+          @click="emit('regenerate', regenStrategy)"
+        >
+          {{ regenerating ? '再生成中...' : 'この型で再生成' }}
+        </button>
+      </div>
+
       <button class="cb-cta bg-green-600" @click="$emit('copy')">
         <CbIcon :d="Icons.copy" :size="16" color="#fff" />
         {{ copied ? 'コピーしました' : '提案文をコピー' }}
       </button>
-      <button class="cb-outline-btn" @click="$emit('apply')">応募済みとして記録する</button>
+      <button class="cb-outline-btn" @click="showApplyConfirm = true">応募済みとして記録する</button>
+      <p class="mt-2 text-center text-[11px] text-slate-400">コピーだけでは応募済みになりません</p>
+
+      <div v-if="showApplyConfirm" class="fixed inset-0 z-[200] flex items-end justify-center bg-black/40 p-4 sm:items-center">
+        <div class="w-full max-w-[400px] rounded-2xl bg-white p-5">
+          <p class="m-0 text-[15px] font-bold text-slate-900">実際に応募しましたか？</p>
+          <p class="mt-2 text-[13px] leading-relaxed text-slate-500">
+            プラットフォームへ提案を送信した場合のみ「応募済み」にしてください。コピーしただけではまだ応募していません。
+          </p>
+          <button class="cb-cta" @click="showApplyConfirm = false; emit('apply')">はい、応募済みにする</button>
+          <button class="cb-outline-btn" @click="showApplyConfirm = false">まだ応募していない</button>
+        </div>
+      </div>
     </template>
   </div>
 </template>

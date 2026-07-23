@@ -40,6 +40,13 @@ export interface ProposalInput {
   diagnosis: DiagnosisResult
   extraction: ExtractionResult
   profile: UserProfile
+  forceStrategy?: string
+}
+
+export interface ReplyInput {
+  title: string
+  replyBody: string
+  profile: UserProfile
 }
 
 export interface AiProvider {
@@ -47,6 +54,7 @@ export interface AiProvider {
   estimate(input: EstimateInput): Promise<EffortEstimate>
   diagnose(input: DiagnosisInput): Promise<DiagnosisResult>
   generateProposal(input: ProposalInput): Promise<ProposalResult>
+  assistReply(input: ReplyInput): Promise<import('../../shared/schemas/ai').ReplyAssistResult>
 }
 
 function extractByHeuristics(title: string, body: string): ExtractionResult {
@@ -122,7 +130,9 @@ function buildProposalFallback(input: ProposalInput): ProposalResult {
     .filter((a) => a.usableInProposal !== false)
     .slice(0, 2)
   const problem = input.diagnosis.clientIntent?.underlyingProblem || '募集内容の課題解決'
-  const strategy = achievements.length ? '実績・証拠型' : '進め方明確型'
+  const strategy =
+    input.forceStrategy ||
+    (achievements.length ? '実績・証拠型' : '進め方明確型')
   const used = achievements.map((a) => a.title)
 
   const body = [
@@ -132,7 +142,11 @@ function buildProposalFallback(input: ProposalInput): ProposalResult {
     achievements.length
       ? `関連実績として、${achievements.map((a) => `${a.title}${a.result ? `（${a.result}）` : ''}`).join('、')} があります。`
       : '',
-    `進め方としては、①要件の確認 ②小さく動く成果物の提示 ③フィードバック反映 の順で進めます。`,
+    strategy === '課題解決型'
+      ? `課題に対しては、現状のボトルネックを切り分けたうえで、最短で効果が出る範囲から着手します。`
+      : strategy === '実績・証拠型'
+        ? `近い案件での進め方と成果を踏まえ、同じ品質で進められると考えています。`
+        : `進め方としては、①要件の確認 ②小さく動く成果物の提示 ③フィードバック反映 の順で進めます。`,
     `対応可能時間は ${input.profile.availableTimes || '要相談'} です。`,
     input.diagnosis.preQuestions?.length
       ? `応募前の確認として、${input.diagnosis.preQuestions.slice(0, 2).join('／')} を伺えれば幸いです。`
@@ -144,9 +158,12 @@ function buildProposalFallback(input: ProposalInput): ProposalResult {
 
   return {
     strategy,
-    strategyReason: achievements.length
-      ? '近い実績を提示できるため'
-      : '要件整理と段階的な進め方が安心材料になるため',
+    strategyReason:
+      input.forceStrategy
+        ? `ユーザー指定の「${strategy}」で再生成しました`
+        : achievements.length
+          ? '近い実績を提示できるため'
+          : '要件整理と段階的な進め方が安心材料になるため',
     body,
     usedAchievements: used,
     preQuestions: input.diagnosis.preQuestions || [],
@@ -154,6 +171,38 @@ function buildProposalFallback(input: ProposalInput): ProposalResult {
     scopeIn: input.diagnosis.scopeIn?.length ? input.diagnosis.scopeIn : ['募集文に記載の主要成果物'],
     scopeOut: input.diagnosis.scopeOut?.length ? input.diagnosis.scopeOut : ['明記のない保守運用', '追加機能の無償対応'],
     meetingTopics: ['成功条件の定義', '優先機能', '連絡頻度'],
+  }
+}
+
+function buildReplyAssist(input: ReplyInput) {
+  const body = input.replyBody
+  const questions = body.split(/[？\?]/).slice(0, -1).map((q) => q.trim().slice(-40)).filter(Boolean).slice(0, 5)
+  const conditionChanges: string[] = []
+  if (/納期|期限/.test(body)) conditionChanges.push('納期・期限に関する記載あり')
+  if (/予算|金額|円/.test(body)) conditionChanges.push('予算・金額に関する記載あり')
+  if (/追加|範囲|スコープ/.test(body)) conditionChanges.push('範囲・追加要件の可能性')
+  if (/保守|運用/.test(body)) conditionChanges.push('保守・運用条件の言及')
+  const needsReestimate = conditionChanges.length > 0
+
+  const draftReply = [
+    `${input.profile.name || '応募者'}です。ご連絡ありがとうございます。`,
+    questions.length ? `ご質問の件、順に回答します。` : '内容を確認しました。',
+    ...questions.map((q, i) => `${i + 1}. 「${q}？」について: （ここに回答を記入）`),
+    needsReestimate
+      ? '条件変更の可能性があるため、対応範囲と工数を一度整理したうえでご提案し直します。'
+      : '不明点があれば追加で確認させてください。',
+    '引き続きよろしくお願いいたします。',
+  ].join('\n')
+
+  return {
+    questions: questions.map((q) => `${q}？`),
+    newRequirements: /追加|新たに/.test(body) ? ['追加要件の記載あり（要確認）'] : [],
+    conditionChanges,
+    needsReply: questions.length ? questions.map((q) => `${q}？への回答`) : ['内容への返信'],
+    newRisks: /即日|常時|無償/.test(body) ? ['稼働・無償条件リスクの再確認'] : [],
+    needsReestimate,
+    draftReply,
+    followUpQuestions: needsReestimate ? ['変更後の確定納期', '変更後の予算上限', '必須範囲'] : ['次のステップ'],
   }
 }
 
@@ -217,6 +266,10 @@ export class FallbackAiProvider implements AiProvider {
 
   async generateProposal(input: ProposalInput): Promise<ProposalResult> {
     return buildProposalFallback(input)
+  }
+
+  async assistReply(input: ReplyInput) {
+    return buildReplyAssist(input)
   }
 }
 

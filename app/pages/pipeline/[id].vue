@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ulid } from 'ulid'
 import { STATUSES, SKIP_REASONS, WORK_LOG_CATEGORIES, PLATFORMS, REC } from '#shared/constants'
 import { nextStatuses, requiresReason, totalWorkMinutes, effortVarianceRate, actualHourlyYen } from '#shared/domain/pipeline'
 import type { StatusCode } from '#shared/types'
@@ -10,9 +11,14 @@ const {
   addStatusEvent,
   addWorkLog,
   saveFinancial,
+  addReply,
+  appendDiagnosisVersion,
   profile,
   ready,
   init,
+  assertAiBudget,
+  trackAiSuccess,
+  trackAiFailure,
 } = useClearBidStore()
 
 await init()
@@ -20,7 +26,7 @@ await init()
 const id = computed(() => String(route.params.id))
 const item = computed(() => getOpportunity(id.value))
 
-const tab = ref<'overview' | 'status' | 'work' | 'money'>('overview')
+const tab = ref<'overview' | 'status' | 'work' | 'money' | 'reply' | 'diagnosis'>('overview')
 const toStatus = ref<StatusCode | ''>('')
 const reasonCode = ref('')
 const statusNote = ref('')
@@ -37,6 +43,17 @@ const withholdingYen = ref(0)
 const expenseYen = ref(0)
 const paidAt = ref('')
 const moneyMsg = ref('')
+
+const replyBody = ref('')
+const replyBusy = ref(false)
+const replyError = ref('')
+const lastAssist = ref<{
+  draftReply: string
+  needsReestimate: boolean
+  conditionChanges: string[]
+  questions: string[]
+  followUpQuestions: string[]
+} | null>(null)
 
 watch(item, (v) => {
   if (!v) return
@@ -99,6 +116,62 @@ async function submitMoney() {
     moneyMsg.value = e instanceof Error ? e.message : '保存に失敗しました'
   }
 }
+
+async function submitReply() {
+  replyError.value = ''
+  if (!item.value || !replyBody.value.trim()) return
+  try {
+    assertAiBudget('reply')
+  } catch (e) {
+    replyError.value = e instanceof Error ? e.message : '利用上限です'
+    return
+  }
+  replyBusy.value = true
+  try {
+    const assist = await $fetch<{
+      draftReply: string
+      needsReestimate: boolean
+      conditionChanges: string[]
+      questions: string[]
+      followUpQuestions: string[]
+    }>('/api/ai/reply', {
+      method: 'POST',
+      body: {
+        title: item.value.title,
+        replyBody: replyBody.value,
+        profile: profile.value,
+      },
+    })
+    lastAssist.value = assist
+    await addReply(item.value.id, {
+      body: replyBody.value,
+      extracted: assist,
+      draftReply: assist.draftReply,
+    })
+    await trackAiSuccess('reply')
+    replyBody.value = ''
+    if (assist.needsReestimate) {
+      await appendDiagnosisVersion(item.value.id, {
+        id: ulid(),
+        version: 0,
+        createdAt: new Date().toISOString(),
+        recommendationReason: '返信により条件変更の可能性。再診断推奨',
+        userDecision: 'needs_rediagnose',
+      })
+    }
+  } catch (e) {
+    await trackAiFailure('reply')
+    replyError.value = e instanceof Error ? e.message : '返信解析に失敗しました'
+  } finally {
+    replyBusy.value = false
+  }
+}
+
+function copyDraft() {
+  if (lastAssist.value?.draftReply) {
+    navigator.clipboard.writeText(lastAssist.value.draftReply).catch(() => {})
+  }
+}
 </script>
 
 <template>
@@ -134,6 +207,8 @@ async function submitMoney() {
           v-for="t in [
             ['overview', '概要'],
             ['status', 'ステータス'],
+            ['reply', '返信'],
+            ['diagnosis', '診断'],
             ['work', '作業時間'],
             ['money', '金額'],
           ] as const"
@@ -196,6 +271,51 @@ async function submitMoney() {
           <p v-if="ev.note" class="m-0 text-xs text-slate-600">{{ ev.note }}</p>
         </div>
         <p v-if="!item.events?.length" class="text-xs text-slate-400">履歴はまだありません</p>
+      </div>
+
+      <div v-else-if="tab === 'reply'">
+        <div class="cb-card mb-2">
+          <p class="mb-2 text-[11px] font-semibold text-slate-500">発注者からの返信を貼り付け</p>
+          <textarea v-model="replyBody" class="cb-input min-h-[120px]" placeholder="返信文をそのまま貼り付け..." />
+          <p v-if="replyError" class="mb-2 text-xs text-red-600">{{ replyError }}</p>
+          <button class="cb-cta" :disabled="replyBusy || !replyBody.trim()" @click="submitReply">
+            {{ replyBusy ? '解析中...' : '返信を解析・記録' }}
+          </button>
+        </div>
+        <div v-if="lastAssist" class="cb-card mb-2 border border-blue-200 bg-blue-50">
+          <p class="mb-1 text-[11px] font-semibold text-blue-700">回答案</p>
+          <p class="m-0 whitespace-pre-wrap text-xs leading-relaxed text-slate-700">{{ lastAssist.draftReply }}</p>
+          <button class="cb-outline-btn" @click="copyDraft">回答案をコピー</button>
+          <p v-if="lastAssist.needsReestimate" class="mt-2 text-xs font-semibold text-amber-700">
+            条件変更の可能性あり → 再診断を推奨
+          </p>
+          <button
+            v-if="lastAssist.needsReestimate"
+            class="cb-outline-btn"
+            @click="tab = 'diagnosis'"
+          >
+            診断タブで再診断へ
+          </button>
+          <p v-for="(c, i) in lastAssist.conditionChanges" :key="i" class="m-0 text-xs text-slate-600">• {{ c }}</p>
+        </div>
+        <div v-for="r in item.replies" :key="r.id" class="cb-card mb-1.5">
+          <p class="m-0 text-[11px] text-slate-400">{{ r.createdAt.slice(0, 16).replace('T', ' ') }}</p>
+          <p class="m-0 mt-1 whitespace-pre-wrap text-xs text-slate-700">{{ r.body }}</p>
+        </div>
+        <p v-if="!item.replies?.length && !lastAssist" class="text-xs text-slate-400">返信記録はまだありません</p>
+      </div>
+
+      <div v-else-if="tab === 'diagnosis'">
+        <button class="cb-cta mb-2" @click="router.push('/diagnose?reset=1')">
+          新規に診断フローを開く（再診断）
+        </button>
+        <p class="mb-3 text-xs text-slate-500">条件変更後は上書きせず、新しい診断バージョンを残します。既存バージョン:</p>
+        <div v-for="v in item.diagnosisVersions" :key="v.id" class="cb-card mb-1.5">
+          <p class="m-0 text-xs font-semibold text-slate-800">v{{ v.version }} · {{ v.recommendation || v.userDecision || '記録' }}</p>
+          <p class="m-0 text-[11px] text-slate-400">{{ v.createdAt.slice(0, 16).replace('T', ' ') }}</p>
+          <p v-if="v.recommendationReason" class="m-0 mt-1 text-xs text-slate-600">{{ v.recommendationReason }}</p>
+        </div>
+        <p v-if="!item.diagnosisVersions?.length" class="text-xs text-slate-400">診断バージョンはまだありません</p>
       </div>
 
       <div v-else-if="tab === 'work'">
