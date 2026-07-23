@@ -117,13 +117,22 @@ async function doDiag() {
   loading.value = true
   loadMsg.value = '5軸で診断しています...'
   try {
+    // Spec: only open findings affect recommendation; inferred items stay for display.
+    const openSafety = safety.value.filter((s) => s.status === 'open')
+    const confirmedExtraction = {
+      ...ext.value,
+      deliverables: (ext.value.deliverables || []).filter((d) => d.provenance === 'confirmed'),
+      requiredSkills: (ext.value.requiredSkills || []).filter((d) => d.provenance === 'confirmed'),
+      budget: ext.value.budget?.provenance === 'confirmed' ? ext.value.budget : { text: '不明', provenance: 'unknown' as const, quote: '' },
+      deadline: ext.value.deadline?.provenance === 'confirmed' ? ext.value.deadline : { text: '不明', provenance: 'unknown' as const, quote: '' },
+    }
     const r = await $fetch<DiagnosisResult>('/api/ai/diagnose', {
       method: 'POST',
       body: {
         title: inp.value.title,
         body: inp.value.body,
-        extraction: ext.value,
-        safety: safety.value,
+        extraction: confirmedExtraction,
+        safety: openSafety,
         effort: effort.value,
         profile: profile.value,
         budgetMinYen: inp.value.budgetMin ? Number(inp.value.budgetMin) : null,
@@ -183,6 +192,19 @@ function buildOpportunityBase(status: 'applied' | 'skipped', reason?: string) {
   const buf = effort.value?.bufferRate || 0
   const now = new Date().toISOString()
   const date = now.slice(0, 10)
+  const version = {
+    id: ulid(),
+    version: 1,
+    createdAt: now,
+    recommendation: diag.value?.recommendation,
+    recommendationReason: diag.value?.recommendationReason,
+    userDecision: status === 'applied' ? 'applied' : 'skipped',
+    extraction: ext.value,
+    safety: safety.value,
+    effort: effort.value,
+    axes: diag.value?.axes,
+    proposal: proposal.value,
+  }
   return normalizeOpportunity({
     id: ulid(),
     title: inp.value.title || '無題',
@@ -220,6 +242,8 @@ function buildOpportunityBase(status: 'applied' | 'skipped', reason?: string) {
     ],
     workLogs: [],
     financial: null,
+    diagnosisVersions: diag.value || effort.value || ext.value ? [version] : [],
+    replies: [],
   })
 }
 
@@ -251,6 +275,7 @@ async function doSkip(reason: string) {
   <DiagnoseStepExtract
     v-else-if="step === 1"
     :ext="ext"
+    @update:ext="ext = $event"
     @next="doSafety"
     @back="step = 0"
   />
@@ -258,6 +283,8 @@ async function doSkip(reason: string) {
     v-else-if="step === 2"
     :safety="safety"
     :effort="effort"
+    @update:safety="safety = $event"
+    @update:effort="effort = $event"
     @next="doDiag"
     @back="step = 1"
     @skip="doSkip('危険信号')"

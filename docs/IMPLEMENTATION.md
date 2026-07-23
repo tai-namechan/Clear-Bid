@@ -28,6 +28,10 @@ Based on Clear Bid MVP Spec v1.0.
 - Heuristic extraction / effort / 5-axis diagnosis fallback
 - Recommendation rules (apply / question / skip) computed in app code
 - Fee / take-home / effective hourly helpers (not delegated to AI)
+- 抽出結果の編集・「確定にする」（推定は計算に使わない）
+- 工数3点のユーザー編集・バッファ編集
+- BLOCK 解除（理由必須・履歴保持）
+- 診断バージョンを Opportunity に追記保存
 
 ### Phase 3 — Acquisition support (MVP slice)
 - Proposal generation via AI provider interface
@@ -39,9 +43,5 @@ Based on Clear Bid MVP Spec v1.0.
 - Live D1 repositories / migrations apply
 - External AI providers (Anthropic / Workers AI) wiring
 
-## Still open before Phase 2/3 completion PRs
-- Effort task editing UI
-- BLOCK resolve history UI
-- Extraction confirm/edit
-- Diagnosis versions
-- Reply assist / re-diagnose / usage counters / apply confirm dialog
+## Still open (Phase 3)
+- Reply assist / re-diagnose / usage counters / apply confirm dialog / strategy regenerate

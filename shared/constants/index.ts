@@ -124,15 +124,11 @@ export const PIPELINE_FILTER_LABELS: Record<string, string> = {
   lost: '失注',
 }
 
-export const WORK_LOG_CATEGORIES = [
-  '要件確認',
-  '調査',
-  '設計',
-  '実装',
-  'テスト',
-  'MTG・連絡',
-  '修正',
-  '学習',
-  '納品',
+export const BLOCK_RESOLVE_REASONS = [
+  '誤検知',
+  '発注者へ確認済み',
+  'プラットフォーム上で許可済み',
+  'リスクを理解して進める',
   'その他',
 ] as const
+

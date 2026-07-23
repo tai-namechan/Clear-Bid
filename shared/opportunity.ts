@@ -65,6 +65,31 @@ export interface Opportunity {
   financial?: FinancialResult | null
   estimatedLikelyHours?: number
   estimatedMaxHours?: number
+  /** Phase 2: diagnosis history (append-only versions). */
+  diagnosisVersions?: DiagnosisVersionRecord[]
+  replies?: ReplyRecord[]
+}
+
+export interface DiagnosisVersionRecord {
+  id: string
+  version: number
+  createdAt: string
+  recommendation?: Recommendation
+  recommendationReason?: string
+  userDecision?: string
+  extraction?: unknown
+  safety?: unknown
+  effort?: unknown
+  axes?: unknown
+  proposal?: unknown
+}
+
+export interface ReplyRecord {
+  id: string
+  body: string
+  createdAt: string
+  extracted?: unknown
+  draftReply?: string
 }
 
 /** Backward-compatible alias used by list cards. */
@@ -108,5 +133,7 @@ export function normalizeOpportunity(raw: Partial<Opportunity> & { id: string; t
     financial: raw.financial ?? null,
     estimatedLikelyHours: raw.estimatedLikelyHours,
     estimatedMaxHours: raw.estimatedMaxHours,
+    diagnosisVersions: raw.diagnosisVersions || [],
+    replies: raw.replies || [],
   }
 }
