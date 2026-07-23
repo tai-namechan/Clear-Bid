@@ -29,10 +29,15 @@ Based on Clear Bid MVP Spec v1.0.
 - Fallback template when no external AI key is configured
 - Copy + separate “mark as applied” actions
 
+## Cursor rules / skills
+
+Clear Dawn の概念ルール・スキルを Nuxt / Clear Bid 向けに再調整して `.cursor/` と `AGENTS.md` に配置済み。
+Laravel 専用スキルは持ち込まない。
+
 ## Not yet (later phases)
-- Cloudflare Access JWT auth
-- Live D1 repositories / migrations apply
-- External AI providers (Anthropic / Workers AI) wiring
+- Cloudflare Access JWT auth（最後にまとめて）
+- Live D1 repositories / migrations apply（最後にまとめて）
+- External AI providers (Anthropic / Workers AI) wiring（最後にまとめて）
 - Opportunity detail page, reply assist, work logs, financial results
 - Effort task editing UI
 - BLOCK resolve history UI

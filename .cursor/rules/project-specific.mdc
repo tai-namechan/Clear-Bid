@@ -1,0 +1,46 @@
+---
+description: プロジェクト固有の環境・運用ルール（Clear Bid）
+alwaysApply: true
+---
+
+# プロジェクト固有ルール（Clear Bid）
+
+## 開発環境
+
+- **スタック**: Nuxt 4 + Vue 3 + TypeScript + Tailwind CSS + Nitro
+- **永続化（現段階）**: localStorage（dogfooding）。D1 + Drizzle schema は定義済み・接続は後続
+- **AI（現段階）**: `server/ai` のプロバイダー抽象 + fallback。外部 API 本接続は後続
+- **パッケージマネージャ**: pnpm
+- **テスト**: Vitest（unit）。Playwright E2E は後続
+- **デプロイ想定**: Cloudflare Workers（`wrangler.jsonc`）。Access / 本番 D1 は後続
+
+## ディレクトリの正
+
+```
+app/           # pages, components, composables, layouts
+server/        # api, domain, rules, ai, utils
+shared/        # types, constants, schemas, domain
+db/            # schema, migrations, seed
+docs/          # 仕様・実装状況
+tests/         # unit / integration / e2e
+```
+
+## コマンド
+
+| 用途 | コマンド |
+|---|---|
+| 開発 | `pnpm dev` |
+| テスト | `pnpm test` |
+| ビルド | `pnpm build` |
+
+## 禁止・注意
+
+- `npm install` より `pnpm` を優先（lockfile は `pnpm-lock.yaml`）
+- AI API キーを `app/` やクライアントバンドルに置かない
+- Clear Dawn（Laravel）のディレクトリ慣習や Eloquent 前提を持ち込まない
+- 一般ユーザー登録・課金・スクレイピングは MVP 対象外
+
+## フェーズ運用
+
+- 実装は仕様の Phase 単位で PR を切り、main へマージしてから次へ進む
+- Access / D1 本番 / 外部 AI は最終まとめて対応

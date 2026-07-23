@@ -1,0 +1,12 @@
+---
+description: 事故防止（HTTP関連）- テストでの外部HTTP禁止・モック統一
+alwaysApply: true
+---
+
+# 事故防止（HTTP関連）
+
+- テストは外部 HTTP を絶対に投げない（stray request 禁止）
+- AI / 外部 API を触るテストは、プロバイダーを fake / stub する
+- fake の対象 URL・モデル名は実装と同じ設定値（runtimeConfig / env）を参照し、テスト独自ハードコードを増やさない
+- fake 漏れの可能性がある場合、実装せずに「原因/統一案/影響範囲/追加テスト」を提案する
+- ブラウザから AI プロバイダーへ直接 fetch しない（必ず `server/api` 経由）

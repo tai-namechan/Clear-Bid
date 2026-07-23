@@ -1,0 +1,65 @@
+---
+description: レイヤー構造と責務 - pages / composables / server api / domain / rules / ai
+alwaysApply: true
+---
+
+# アーキテクチャ基準（Nuxt 4 / Clear Bid）
+
+## 基本思想
+
+### 1. 「動く」と「運用に耐える」は別物
+- ミニマムで動くだけのコードでは不十分
+- エッジケース（null、空配列、所有者外データ）を意識する
+- AI 出力は参考。最終判断・金額計算・BLOCK 確定はアプリ側
+
+### 2. フレームワークを信頼する
+- Nuxt / Vue / Nitro / Zod / Drizzle が提供する機能を理解し、自前実装を避ける
+- FW が自動でやることを手動で再実装しない
+
+### 3. コードの「意図」を読む
+- 「なぜこう書いたのか分からない」場合は、書き換える前にユーザーに確認する
+- 既存コードの命名・構造パターンを踏襲する
+
+## レイヤー構造
+
+```
+app/pages（画面・遷移）
+ ↓ composables（状態・永続化・画面オーケストレーション）
+ ↓ $fetch → server/api（HTTP 入出力・認可・バリデーション）
+ ↓ domain（金額・判断候補・工数集計など決定的ロジック）
+ ↓ rules（安全ルールカタログ・ルールエンジン）
+ ↓ ai（プロバイダー抽象・構造化出力）
+ ↓ repositories / db schema（永続化。D1 接続は後続フェーズ）
+```
+
+### 責務分担
+
+| レイヤー | 責務 | 必須 |
+|---|---|---|
+| pages / components | UI・ユーザー操作 | はい |
+| composables | 画面状態、localStorage/API 呼び出しの調停 | はい |
+| server/api | 入出力、エラー形式、所有者認可 | はい（サーバー処理） |
+| domain | 手数料・時給・判断候補など決定的計算 | はい（計算がある場合） |
+| rules | BLOCK/CHECK/INFO のルール判定 | 安全チェック |
+| ai | 抽出・提案など非決定的処理。計算をしない | AI が必要な場合 |
+| shared | 型・Zod・定数の単一情報源 | はい |
+
+### 重要な制約
+
+- **金額・時給・利用可能時間の計算を AI に任せない**（`clear-bid-domain.mdc`）
+- **AI 推定だけで BLOCK にしない**
+- **総合点（0〜100）を作らない**
+- **pages に業務計算を直書きしない**。domain / rules へ寄せる
+- **API キーをブラウザへ出さない**
+- Clear Dawn の Laravel 層（Controller/FormRequest/Policy）は持ち込まない
+
+## 配置ルール
+
+- UI: `app/components/{home,diagnose,pipeline,profile}/`
+- API: `server/api/**`
+- 共有契約: `shared/{types,constants,schemas,domain}/`
+- DB: `db/schema/`（正）。マイグレーションは後続フェーズ
+
+## レビューに耐えるコードを書く
+
+説明できないコードはユーザーに確認を求める。
