@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "clear-bid",
+  "main": "./.output/server/index.mjs",
+  "compatibility_date": "2025-07-15",
+  "assets": {
+    "directory": "./.output/public",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "clear-bid",
+      "database_id": "REPLACE_WITH_D1_ID",
+      "migrations_dir": "db/migrations"
+    }
+  ]
+}
