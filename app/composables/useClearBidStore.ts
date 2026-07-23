@@ -1,7 +1,15 @@
 import { ulid } from 'ulid'
-import { STORAGE_KEYS } from '#shared/constants'
+import { AI_USAGE_LIMITS, STORAGE_KEYS } from '#shared/constants'
 import { calcFinancial } from '#shared/domain/financial'
 import { canTransition, requiresReason, isValidReasonCode } from '#shared/domain/pipeline'
+import {
+  canUse,
+  emptyUsage,
+  recordFailure,
+  recordSuccess,
+  type AiOperation,
+  type AiUsageState,
+} from '#shared/domain/usage'
 import {
   INIT_PROFILE,
   INIT_STATS,
@@ -14,6 +22,7 @@ import {
   normalizeOpportunity,
   type FinancialResult,
   type Opportunity,
+  type ReplyRecord,
   type WorkLog,
 } from '#shared/opportunity'
 
@@ -69,12 +78,13 @@ export function useClearBidStore() {
   const profile = useState<UserProfile>('cb-profile', () => ({ ...INIT_PROFILE }))
   const pipeline = useState<Opportunity[]>('cb-pipeline', () => [])
   const stats = useState<AppStats>('cb-stats', () => ({ ...INIT_STATS }))
+  const usage = useState<AiUsageState>('cb-usage', () => emptyUsage())
   const ready = useState<boolean>('cb-ready', () => false)
 
   const init = async () => {
     if (ready.value) return
     profile.value = await load(STORAGE_KEYS.PROFILE, { ...INIT_PROFILE })
-    const raw = await load<Partial<Opportunity>[]>((STORAGE_KEYS.PIPELINE), [])
+    const raw = await load<Partial<Opportunity>[]>(STORAGE_KEYS.PIPELINE, [])
     pipeline.value = raw.map((r) =>
       normalizeOpportunity({
         id: r.id || ulid(),
@@ -87,6 +97,7 @@ export function useClearBidStore() {
     )
     const loadedStats = await load(STORAGE_KEYS.STATS, { ...INIT_STATS })
     stats.value = { ...recomputeStats(pipeline.value, loadedStats), diagnosed: loadedStats.diagnosed || 0 }
+    usage.value = await load(STORAGE_KEYS.AI_USAGE, emptyUsage())
     ready.value = true
   }
 
@@ -110,6 +121,26 @@ export function useClearBidStore() {
   const saveStats = async (s: AppStats) => {
     stats.value = s
     await save(STORAGE_KEYS.STATS, s)
+  }
+
+  const persistUsage = async (u: AiUsageState) => {
+    usage.value = u
+    await save(STORAGE_KEYS.AI_USAGE, u)
+  }
+
+  const assertAiBudget = (op: AiOperation) => {
+    const limit = AI_USAGE_LIMITS[op as keyof typeof AI_USAGE_LIMITS]
+    if (limit != null && !canUse(usage.value, op, limit)) {
+      throw new Error(`今月のAI利用上限（${op}: ${limit}回）に達しました`)
+    }
+  }
+
+  const trackAiSuccess = async (op: AiOperation) => {
+    await persistUsage(recordSuccess(usage.value, op))
+  }
+
+  const trackAiFailure = async (op: AiOperation) => {
+    await persistUsage(recordFailure(usage.value, op))
   }
 
   const getOpportunity = (id: string) => pipeline.value.find((p) => p.id === id)
@@ -210,10 +241,50 @@ export function useClearBidStore() {
     return updated
   }
 
+  const addReply = async (id: string, reply: { body: string; extracted?: unknown; draftReply?: string }) => {
+    const item = getOpportunity(id)
+    if (!item) throw new Error('案件が見つかりません')
+    const entry: ReplyRecord = {
+      id: ulid(),
+      body: reply.body,
+      createdAt: new Date().toISOString(),
+      extracted: reply.extracted,
+      draftReply: reply.draftReply,
+    }
+    const updated: Opportunity = {
+      ...item,
+      replies: [entry, ...(item.replies || [])],
+      updatedAt: new Date().toISOString().slice(0, 10),
+    }
+    await upsertOpportunity(updated)
+    if (item.status === 'applied') {
+      return addStatusEvent(id, 'replied', { note: '返信を記録' })
+    }
+    return updated
+  }
+
+  const appendDiagnosisVersion = async (
+    id: string,
+    version: NonNullable<Opportunity['diagnosisVersions']>[number],
+  ) => {
+    const item = getOpportunity(id)
+    if (!item) throw new Error('案件が見つかりません')
+    const nextVersion = (item.diagnosisVersions?.[0]?.version || 0) + 1
+    const updated: Opportunity = {
+      ...item,
+      recommendation: (version.recommendation as Opportunity['recommendation']) || item.recommendation,
+      diagnosisVersions: [{ ...version, version: nextVersion }, ...(item.diagnosisVersions || [])],
+      updatedAt: new Date().toISOString().slice(0, 10),
+    }
+    await upsertOpportunity(updated)
+    return updated
+  }
+
   return {
     profile,
     pipeline,
     stats,
+    usage,
     ready,
     init,
     saveProfile,
@@ -224,5 +295,10 @@ export function useClearBidStore() {
     addStatusEvent,
     addWorkLog,
     saveFinancial,
+    addReply,
+    appendDiagnosisVersion,
+    assertAiBudget,
+    trackAiSuccess,
+    trackAiFailure,
   }
 }

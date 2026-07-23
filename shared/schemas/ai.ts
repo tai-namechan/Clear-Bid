@@ -87,6 +87,17 @@ export const ProposalResultSchema = z.object({
   meetingTopics: z.array(z.string()).default([]),
 })
 
+export const ReplyAssistSchema = z.object({
+  questions: z.array(z.string()).default([]),
+  newRequirements: z.array(z.string()).default([]),
+  conditionChanges: z.array(z.string()).default([]),
+  needsReply: z.array(z.string()).default([]),
+  newRisks: z.array(z.string()).default([]),
+  needsReestimate: z.boolean().default(false),
+  draftReply: z.string(),
+  followUpQuestions: z.array(z.string()).default([]),
+})
+
 export type ExtractionResult = z.infer<typeof ExtractionResultSchema>
 export type SafetyFinding = z.infer<typeof SafetyFindingSchema>
 export type EffortEstimate = z.infer<typeof EffortEstimateSchema>
@@ -94,3 +105,7 @@ export type EffortTask = z.infer<typeof EffortTaskSchema>
 export type AxisAssessment = z.infer<typeof AxisAssessmentSchema>
 export type DiagnosisResult = z.infer<typeof DiagnosisResultSchema>
 export type ProposalResult = z.infer<typeof ProposalResultSchema>
+export type ReplyAssistResult = z.infer<typeof ReplyAssistSchema>
+
+export const PROPOSAL_STRATEGIES = ['課題解決型', '実績・証拠型', '進め方明確型'] as const
+

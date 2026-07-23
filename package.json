@@ -30,10 +30,5 @@
     "vitest": "^3.2.4",
     "vue-tsc": "^2.2.10"
   },
-  "packageManager": "pnpm@11.17.0",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
-  }
+  "packageManager": "pnpm@11.17.0"
 }

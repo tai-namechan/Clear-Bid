@@ -96,7 +96,16 @@ export const STORAGE_KEYS = {
   PIPELINE: 'cb-pipeline',
   STATS: 'cb-stats',
   DRAFT_INPUT: 'cb-draft-input',
+  AI_USAGE: 'cb-ai-usage',
 } as const
+
+export const AI_USAGE_LIMITS = {
+  extract: 30,
+  diagnose: 30,
+  proposal: 15,
+  reply: 20,
+} as const
+
 
 export const PIPELINE_FILTERS = [
   'all',
@@ -123,6 +132,19 @@ export const PIPELINE_FILTER_LABELS: Record<string, string> = {
   paid: '入金済み',
   lost: '失注',
 }
+
+export const WORK_LOG_CATEGORIES = [
+  '要件確認',
+  '調査',
+  '設計',
+  '実装',
+  'テスト',
+  'MTG・連絡',
+  '修正',
+  '学習',
+  '納品',
+  'その他',
+] as const
 
 export const BLOCK_RESOLVE_REASONS = [
   '誤検知',
