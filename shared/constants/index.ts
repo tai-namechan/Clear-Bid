@@ -97,3 +97,42 @@ export const STORAGE_KEYS = {
   STATS: 'cb-stats',
   DRAFT_INPUT: 'cb-draft-input',
 } as const
+
+export const PIPELINE_FILTERS = [
+  'all',
+  'review',
+  'skipped',
+  'applied',
+  'replied',
+  'interview',
+  'won',
+  'completed',
+  'paid',
+  'lost',
+] as const
+
+export const PIPELINE_FILTER_LABELS: Record<string, string> = {
+  all: 'すべて',
+  review: '判断中',
+  skipped: '見送り',
+  applied: '応募済み',
+  replied: '返信あり',
+  interview: '面談',
+  won: '受注',
+  completed: '完了',
+  paid: '入金済み',
+  lost: '失注',
+}
+
+export const WORK_LOG_CATEGORIES = [
+  '要件確認',
+  '調査',
+  '設計',
+  '実装',
+  'テスト',
+  'MTG・連絡',
+  '修正',
+  '学習',
+  '納品',
+  'その他',
+] as const

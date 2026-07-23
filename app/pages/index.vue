@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { Icons } from '~/utils/icons'
+import { buildNextActions } from '#shared/domain/pipeline'
 
 const { profile, pipeline, stats } = useClearBidStore()
 const router = useRouter()
 
 const recent = computed(() => pipeline.value.slice(0, 3))
 const hasData = computed(() => stats.value.diagnosed > 0 || stats.value.applied > 0)
+const nextActions = computed(() => buildNextActions(pipeline.value))
 
 function onStart() {
   router.push('/diagnose?reset=1')
@@ -115,6 +117,22 @@ function onStart() {
         <span>案件を診断する</span>
       </button>
 
+      <div v-if="nextActions.length" class="mt-5">
+        <p class="mb-2 text-sm font-bold text-slate-900">次のアクション</p>
+        <button
+          v-for="(a, i) in nextActions"
+          :key="i"
+          class="cb-card mb-1.5 flex w-full cursor-pointer items-center justify-between border-none text-left"
+          @click="router.push(`/pipeline/${a.opportunityId}`)"
+        >
+          <div>
+            <p class="m-0 text-[13px] font-semibold text-slate-900">{{ a.label }}</p>
+            <p class="m-0 text-xs text-slate-400">{{ a.title }}</p>
+          </div>
+          <CbIcon :d="Icons.chevron" :size="16" color="#94a3b8" />
+        </button>
+      </div>
+
       <template v-if="recent.length">
         <div class="mt-5 flex items-center justify-between">
           <p class="m-0 text-sm font-bold text-slate-900">最近の案件</p>
@@ -123,7 +141,9 @@ function onStart() {
             <CbIcon :d="Icons.chevron" :size="14" color="#3b82f6" />
           </button>
         </div>
-        <PipelinePipeCard v-for="it in recent" :key="it.id" :item="it" />
+        <NuxtLink v-for="it in recent" :key="it.id" :to="`/pipeline/${it.id}`" class="block no-underline">
+          <PipelinePipeCard :item="it" />
+        </NuxtLink>
       </template>
     </template>
   </div>
