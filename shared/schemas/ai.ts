@@ -30,6 +30,8 @@ export const SafetyFindingSchema = z.object({
   confidence: z.enum(['high', 'medium', 'low']).default('high'),
   status: z.enum(['open', 'resolved']).default('open'),
   userNote: z.string().nullable().default(null),
+  resolveReason: z.string().nullable().optional(),
+  resolvedAt: z.string().nullable().optional(),
 })
 
 export const EffortTaskSchema = z.object({
