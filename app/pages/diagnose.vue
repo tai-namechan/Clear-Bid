@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ulid } from 'ulid'
-import { INIT_JOB_INPUT, type JobInput, type PipelineItem } from '#shared/types'
+import { INIT_JOB_INPUT, type JobInput, normalizeOpportunity } from '#shared/types'
 import type {
   DiagnosisResult,
   EffortEstimate,
@@ -12,7 +12,7 @@ import { STORAGE_KEYS } from '#shared/constants'
 
 const route = useRoute()
 const router = useRouter()
-const { profile, pipeline, stats, savePipeline, saveStats } = useClearBidStore()
+const { profile, stats, saveStats, upsertOpportunity } = useClearBidStore()
 
 const step = ref(0)
 const loading = ref(false)
@@ -176,34 +176,61 @@ function doCopy() {
   }, 2000)
 }
 
-async function doApply() {
-  const it: PipelineItem = {
+function buildOpportunityBase(status: 'applied' | 'skipped', reason?: string) {
+  const tasks = effort.value?.tasks || []
+  const likely = tasks.reduce((s, t) => s + t.likely, 0)
+  const max = tasks.reduce((s, t) => s + t.max, 0)
+  const buf = effort.value?.bufferRate || 0
+  const now = new Date().toISOString()
+  const date = now.slice(0, 10)
+  return normalizeOpportunity({
     id: ulid(),
-    title: inp.value.title,
+    title: inp.value.title || '無題',
     platform: inp.value.platform,
-    status: 'applied',
-    date: new Date().toISOString().slice(0, 10),
+    status,
+    date,
+    updatedAt: date,
+    body: inp.value.body,
+    budgetType: inp.value.budgetType,
+    budgetMin: inp.value.budgetMin,
+    budgetMax: inp.value.budgetMax,
+    deadline: inp.value.deadline,
+    applicants: inp.value.applicants,
     recommendation: diag.value?.recommendation,
     strategy: proposal.value?.strategy,
-    budgetMin: inp.value.budgetMin,
-  }
-  await savePipeline([it, ...pipeline.value])
-  await saveStats({ ...stats.value, applied: stats.value.applied + 1 })
+    skipReason: reason,
+    estimatedLikelyHours: tasks.length ? Math.round(likely * (1 + buf) * 10) / 10 : undefined,
+    estimatedMaxHours: tasks.length ? Math.round(max * (1 + buf) * 10) / 10 : undefined,
+    client: {
+      rating: inp.value.clientRating,
+      reviews: inp.value.clientReviews,
+      orders: inp.value.clientOrders,
+      completionRate: inp.value.clientCompletionRate,
+      verified: inp.value.clientVerified,
+      certified: inp.value.clientCertified,
+    },
+    events: [
+      {
+        id: ulid(),
+        fromStatus: null,
+        toStatus: status,
+        reasonCode: reason,
+        createdAt: now,
+      },
+    ],
+    workLogs: [],
+    financial: null,
+  })
+}
+
+async function doApply() {
+  await upsertOpportunity(buildOpportunityBase('applied'))
   reset()
   router.push('/pipeline')
 }
 
 async function doSkip(reason: string) {
-  const it: PipelineItem = {
-    id: ulid(),
-    title: inp.value.title || '無題',
-    platform: inp.value.platform,
-    status: 'skipped',
-    date: new Date().toISOString().slice(0, 10),
-    skipReason: reason,
-  }
-  await savePipeline([it, ...pipeline.value])
-  await saveStats({ ...stats.value, skipped: stats.value.skipped + 1 })
+  await upsertOpportunity(buildOpportunityBase('skipped', reason))
   reset()
   router.push('/pipeline')
 }

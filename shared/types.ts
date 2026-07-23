@@ -85,19 +85,8 @@ export interface JobInput {
   clientCertified: boolean
 }
 
-export interface PipelineItem {
-  id: string
-  title: string
-  platform: Platform
-  status: StatusCode
-  date: string
-  recommendation?: Recommendation
-  strategy?: string
-  budgetMin?: string
-  skipReason?: string
-  contractYen?: number
-  note?: string
-}
+export type { Opportunity as PipelineItem, Opportunity, PipelineEvent, WorkLog, FinancialResult, ClientSnapshot } from './opportunity'
+export { emptyFinancial, normalizeOpportunity } from './opportunity'
 
 export interface AppStats {
   diagnosed: number

@@ -1,5 +1,21 @@
+import { ulid } from 'ulid'
 import { STORAGE_KEYS } from '#shared/constants'
-import { INIT_PROFILE, INIT_STATS, type AppStats, type PipelineItem, type UserProfile } from '#shared/types'
+import { calcFinancial } from '#shared/domain/financial'
+import { canTransition, requiresReason, isValidReasonCode } from '#shared/domain/pipeline'
+import {
+  INIT_PROFILE,
+  INIT_STATS,
+  type AppStats,
+  type PipelineItem,
+  type StatusCode,
+  type UserProfile,
+} from '#shared/types'
+import {
+  normalizeOpportunity,
+  type FinancialResult,
+  type Opportunity,
+  type WorkLog,
+} from '#shared/opportunity'
 
 async function load<T>(key: string, fallback: T): Promise<T> {
   if (!import.meta.client) return fallback
@@ -20,18 +36,66 @@ async function save<T>(key: string, value: T): Promise<void> {
   }
 }
 
+function recomputeStats(items: Opportunity[], base?: AppStats): AppStats {
+  const s: AppStats = {
+    diagnosed: base?.diagnosed || 0,
+    applied: 0,
+    replied: 0,
+    interviews: 0,
+    won: 0,
+    completed: 0,
+    paid: 0,
+    skipped: 0,
+    contractTotal: 0,
+    paidTotal: 0,
+  }
+  for (const it of items) {
+    if (['applied', 'replied', 'interview', 'won', 'working', 'delivered', 'completed', 'paid', 'lost'].includes(it.status)) {
+      s.applied += 1
+    }
+    if (['replied', 'interview', 'won', 'working', 'delivered', 'completed', 'paid'].includes(it.status)) s.replied += 1
+    if (['interview', 'won', 'working', 'delivered', 'completed', 'paid'].includes(it.status)) s.interviews += 1
+    if (['won', 'working', 'delivered', 'completed', 'paid'].includes(it.status)) s.won += 1
+    if (['completed', 'paid'].includes(it.status)) s.completed += 1
+    if (it.status === 'paid') s.paid += 1
+    if (it.status === 'skipped') s.skipped += 1
+    if (it.financial?.contractYen) s.contractTotal += it.financial.preTaxTakeHomeYen || 0
+    if (it.financial?.paidAt) s.paidTotal += it.financial.preTaxTakeHomeYen || 0
+  }
+  return s
+}
+
 export function useClearBidStore() {
   const profile = useState<UserProfile>('cb-profile', () => ({ ...INIT_PROFILE }))
-  const pipeline = useState<PipelineItem[]>('cb-pipeline', () => [])
+  const pipeline = useState<Opportunity[]>('cb-pipeline', () => [])
   const stats = useState<AppStats>('cb-stats', () => ({ ...INIT_STATS }))
   const ready = useState<boolean>('cb-ready', () => false)
 
   const init = async () => {
     if (ready.value) return
     profile.value = await load(STORAGE_KEYS.PROFILE, { ...INIT_PROFILE })
-    pipeline.value = await load(STORAGE_KEYS.PIPELINE, [])
-    stats.value = await load(STORAGE_KEYS.STATS, { ...INIT_STATS })
+    const raw = await load<Partial<Opportunity>[]>((STORAGE_KEYS.PIPELINE), [])
+    pipeline.value = raw.map((r) =>
+      normalizeOpportunity({
+        id: r.id || ulid(),
+        title: r.title || '無題',
+        platform: (r.platform as Opportunity['platform']) || 'crowdworks',
+        status: (r.status as StatusCode) || 'draft',
+        date: r.date || new Date().toISOString().slice(0, 10),
+        ...r,
+      }),
+    )
+    const loadedStats = await load(STORAGE_KEYS.STATS, { ...INIT_STATS })
+    stats.value = { ...recomputeStats(pipeline.value, loadedStats), diagnosed: loadedStats.diagnosed || 0 }
     ready.value = true
+  }
+
+  const persistPipeline = async (items: Opportunity[]) => {
+    pipeline.value = items
+    await save(STORAGE_KEYS.PIPELINE, items)
+    const next = recomputeStats(items, stats.value)
+    stats.value = next
+    await save(STORAGE_KEYS.STATS, next)
   }
 
   const saveProfile = async (p: UserProfile) => {
@@ -40,13 +104,110 @@ export function useClearBidStore() {
   }
 
   const savePipeline = async (items: PipelineItem[]) => {
-    pipeline.value = items
-    await save(STORAGE_KEYS.PIPELINE, items)
+    await persistPipeline(items.map((i) => normalizeOpportunity(i)))
   }
 
   const saveStats = async (s: AppStats) => {
     stats.value = s
     await save(STORAGE_KEYS.STATS, s)
+  }
+
+  const getOpportunity = (id: string) => pipeline.value.find((p) => p.id === id)
+
+  const upsertOpportunity = async (item: Opportunity) => {
+    const exists = pipeline.value.some((p) => p.id === item.id)
+    const next = exists
+      ? pipeline.value.map((p) => (p.id === item.id ? item : p))
+      : [item, ...pipeline.value]
+    await persistPipeline(next)
+  }
+
+  const addStatusEvent = async (
+    id: string,
+    toStatus: StatusCode,
+    opts?: { reasonCode?: string; note?: string },
+  ) => {
+    const item = getOpportunity(id)
+    if (!item) throw new Error('案件が見つかりません')
+    if (!canTransition(item.status, toStatus)) {
+      throw new Error(`${item.status} から ${toStatus} へは遷移できません`)
+    }
+    if (requiresReason(toStatus)) {
+      if (!opts?.reasonCode || !isValidReasonCode(opts.reasonCode)) {
+        throw new Error('見送り・失注・キャンセルには理由が必要です')
+      }
+    }
+    const now = new Date().toISOString()
+    const updated: Opportunity = {
+      ...item,
+      status: toStatus,
+      updatedAt: now.slice(0, 10),
+      skipReason: requiresReason(toStatus) ? opts?.reasonCode : item.skipReason,
+      events: [
+        {
+          id: ulid(),
+          fromStatus: item.status,
+          toStatus,
+          reasonCode: opts?.reasonCode,
+          note: opts?.note,
+          createdAt: now,
+        },
+        ...(item.events || []),
+      ],
+    }
+    await upsertOpportunity(updated)
+    return updated
+  }
+
+  const addWorkLog = async (id: string, log: Omit<WorkLog, 'id' | 'createdAt'>) => {
+    const item = getOpportunity(id)
+    if (!item) throw new Error('案件が見つかりません')
+    if (log.minutes <= 0) throw new Error('作業時間は1分以上です')
+    const entry: WorkLog = {
+      ...log,
+      id: ulid(),
+      createdAt: new Date().toISOString(),
+    }
+    const updated: Opportunity = {
+      ...item,
+      workLogs: [entry, ...(item.workLogs || [])],
+      updatedAt: new Date().toISOString().slice(0, 10),
+    }
+    await upsertOpportunity(updated)
+    return updated
+  }
+
+  const saveFinancial = async (
+    id: string,
+    input: {
+      contractYen: number
+      feeRatePercent?: number
+      withholdingYen?: number
+      expenseYen?: number
+      paidAt?: string | null
+      completedAt?: string | null
+    },
+  ) => {
+    const item = getOpportunity(id)
+    if (!item) throw new Error('案件が見つかりません')
+    const calc = calcFinancial({
+      contractYen: input.contractYen,
+      feeRatePercent: input.feeRatePercent ?? profile.value.feeRate ?? 20,
+      withholdingYen: input.withholdingYen,
+      expenseYen: input.expenseYen,
+    })
+    const financial: FinancialResult = {
+      ...calc,
+      paidAt: input.paidAt ?? item.financial?.paidAt ?? null,
+      completedAt: input.completedAt ?? item.financial?.completedAt ?? null,
+    }
+    const updated: Opportunity = {
+      ...item,
+      financial,
+      updatedAt: new Date().toISOString().slice(0, 10),
+    }
+    await upsertOpportunity(updated)
+    return updated
   }
 
   return {
@@ -58,5 +219,10 @@ export function useClearBidStore() {
     saveProfile,
     savePipeline,
     saveStats,
+    getOpportunity,
+    upsertOpportunity,
+    addStatusEvent,
+    addWorkLog,
+    saveFinancial,
   }
 }
