@@ -30,10 +30,14 @@ pnpm build
 
 ## セットアップ手順（初めての人向け）
 
+**スマホで見るときはこのリンク（Rawはコード表示になります）:**  
+https://cdn.jsdelivr.net/gh/tai-namechan/Clear-Bid@main/docs/manual/clear-bid-setup-manual.html
+
 画面のクリック順まで書いたマニュアル:
 
 - ブラウザで開く: [`docs/manual/clear-bid-setup-manual.html`](docs/manual/clear-bid-setup-manual.html)
 - 開き方: [`docs/manual/README.md`](docs/manual/README.md)
+- ローカル / デプロイ後: `/manual/clear-bid-setup-manual.html`
 
 技術者向けの短い手順: [`docs/DEPLOY.md`](docs/DEPLOY.md)
 
