@@ -42,4 +42,4 @@ description: >-
 4. 実装方針（最小差分）
 5. 受入条件（Given/When/Then）
 6. テスト観点
-7. 後回し領域（Access/D1/外部AI）への誤進入がないか
+7. 金額・推奨・BLOCK を AI に委譲していないか
