@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clear Bid セットアップマニュアル</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #15202b;
+      --mute: #5b6b7c;
+      --line: #d7dee7;
+      --panel: #ffffff;
+      --bg: #f3f6f9;
+      --brand: #0b6e99;
+      --brand-soft: #e7f4fa;
+      --ok: #1f7a4c;
+      --ok-soft: #e8f7ef;
+      --warn: #9a6700;
+      --warn-soft: #fff7e6;
+      --danger: #b42318;
+      --danger-soft: #fef3f2;
+      --code-bg: #0f172a;
+      --code-fg: #e2e8f0;
+      --shadow: 0 1px 2px rgba(21, 32, 43, 0.06), 0 8px 24px rgba(21, 32, 43, 0.06);
+      --radius: 14px;
+      --max: 860px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans JP", "IBM Plex Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 500px at 10% -10%, #d9eef7 0%, transparent 55%),
+        radial-gradient(900px 400px at 100% 0%, #e8f0f7 0%, transparent 50%),
+        var(--bg);
+      line-height: 1.75;
+      font-size: 16px;
+    }
+
+    .wrap { max-width: var(--max); margin: 0 auto; padding: 32px 20px 80px; }
+
+    .hero {
+      background: linear-gradient(160deg, #0b6e99 0%, #0a4f74 55%, #16324a 100%);
+      color: #fff;
+      border-radius: 22px;
+      padding: 36px 32px;
+      box-shadow: var(--shadow);
+      margin-bottom: 28px;
+    }
+    .hero .eyebrow {
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0.85;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    .hero h1 {
+      margin: 0 0 12px;
+      font-size: clamp(1.7rem, 4vw, 2.3rem);
+      line-height: 1.25;
+      font-weight: 700;
+    }
+    .hero p { margin: 0; opacity: 0.92; max-width: 42em; }
+    .hero .meta {
+      margin-top: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.14);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 24px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      padding: 12px 0;
+      background: color-mix(in srgb, var(--bg) 86%, transparent);
+      backdrop-filter: blur(8px);
+    }
+    .btn {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .btn:hover { border-color: #b8c5d4; }
+    .btn-primary {
+      background: var(--brand);
+      border-color: var(--brand);
+      color: #fff;
+    }
+
+    .toc, .card, .step, .callout {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .toc { padding: 22px 24px; margin-bottom: 28px; }
+    .toc h2 { margin: 0 0 12px; font-size: 1.05rem; }
+    .toc ol { margin: 0; padding-left: 1.2em; }
+    .toc a { color: var(--brand); text-decoration: none; font-weight: 500; }
+    .toc a:hover { text-decoration: underline; }
+    .toc li { margin: 6px 0; }
+
+    h2.section {
+      margin: 40px 0 14px;
+      font-size: 1.45rem;
+      scroll-margin-top: 72px;
+    }
+    h3 {
+      margin: 22px 0 10px;
+      font-size: 1.08rem;
+      scroll-margin-top: 72px;
+    }
+    p { margin: 0 0 12px; }
+    ul, ol { margin: 0 0 14px; padding-left: 1.3em; }
+    li { margin: 4px 0; }
+    strong { font-weight: 700; }
+    code, kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.9em;
+    }
+    code {
+      background: #eef3f8;
+      padding: 0.12em 0.4em;
+      border-radius: 6px;
+    }
+    kbd {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      padding: 0.05em 0.4em;
+    }
+
+    .callout {
+      padding: 14px 16px;
+      margin: 14px 0 18px;
+    }
+    .callout.why { background: var(--brand-soft); border-color: #b7d8e8; }
+    .callout.ok { background: var(--ok-soft); border-color: #b7e0c8; }
+    .callout.warn { background: var(--warn-soft); border-color: #f0d59a; }
+    .callout.danger { background: var(--danger-soft); border-color: #f3c6c2; }
+    .callout .label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+    .callout.why .label { color: var(--brand); }
+    .callout.ok .label { color: var(--ok); }
+    .callout.warn .label { color: var(--warn); }
+    .callout.danger .label { color: var(--danger); }
+
+    .step {
+      padding: 0;
+      margin: 16px 0 20px;
+      overflow: hidden;
+    }
+    .step-head {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+      background: #f8fafc;
+    }
+    .step-num {
+      flex: 0 0 auto;
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--brand);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .step-head h4 {
+      margin: 0;
+      font-size: 1rem;
+      line-height: 1.4;
+    }
+    .step-head p {
+      margin: 4px 0 0;
+      color: var(--mute);
+      font-size: 0.92rem;
+    }
+    .step-body { padding: 16px 18px 18px; }
+    .step-body > :last-child { margin-bottom: 0; }
+
+    .clickpath {
+      margin: 12px 0;
+      padding: 0;
+      list-style: none;
+    }
+    .clickpath li {
+      position: relative;
+      padding: 10px 12px 10px 36px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      margin: 8px 0;
+      background: #fbfdff;
+    }
+    .clickpath li::before {
+      content: attr(data-n);
+      position: absolute;
+      left: 10px;
+      top: 10px;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: #dceaf3;
+      color: var(--brand);
+      font-size: 11px;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+    }
+
+    pre {
+      background: var(--code-bg);
+      color: var(--code-fg);
+      border-radius: 12px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-size: 0.88rem;
+      line-height: 1.55;
+      margin: 12px 0;
+    }
+    pre code { background: transparent; color: inherit; padding: 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 18px;
+      font-size: 0.94rem;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #f5f8fb; font-weight: 600; }
+    tr:last-child td { border-bottom: none; }
+
+    .checklist label {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 8px 0;
+      border-bottom: 1px dashed var(--line);
+    }
+    .checklist label:last-child { border-bottom: none; }
+    .checklist input { margin-top: 5px; }
+
+    .map {
+      display: grid;
+      gap: 10px;
+      margin: 14px 0 18px;
+    }
+    @media (min-width: 700px) {
+      .map { grid-template-columns: repeat(3, 1fr); }
+    }
+    .map .card {
+      padding: 14px;
+    }
+    .map .card h3 { margin: 0 0 6px; font-size: 0.98rem; }
+    .map .card p { margin: 0; color: var(--mute); font-size: 0.9rem; }
+
+    .footer {
+      margin-top: 40px;
+      color: var(--mute);
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    @media print {
+      body { background: #fff; font-size: 12pt; }
+      .toolbar { display: none !important; }
+      .hero, .toc, .card, .step, .callout {
+        box-shadow: none;
+        break-inside: avoid;
+      }
+      .hero { background: #0b6e99 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      a { color: inherit; text-decoration: none; }
+      .wrap { max-width: none; padding: 0; }
+      h2.section { break-before: page; }
+      h2.section:first-of-type { break-before: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Clear Bid Setup Manual</div>
+      <h1>仕事道具として使い始めるための<br />セットアップ手順書</h1>
+      <p>
+        このマニュアルは、プログラミング経験が浅い人でも、Clear Bid を「自分のPCで使う」ところから
+        「インターネット上に自分専用で安全に公開する」ところまで進められるように書いたものです。
+        各手順では「どこをクリックするか」「何を入力するか」「なぜやるのか」をセットで説明します。
+      </p>
+      <div class="meta">
+        <span class="pill">所要目安: 半日〜1日（初回）</span>
+        <span class="pill">対象: 自分1人で使う</span>
+        <span class="pill">最終更新: 2026-07-25</span>
+      </div>
+    </header>
+
+    <div class="toolbar">
+      <button class="btn btn-primary" type="button" onclick="window.print()">PDFとして保存 / 印刷</button>
+      <a class="btn" href="#sec-0">最初から読む</a>
+      <a class="btn" href="#sec-checklist">最終チェックリストへ</a>
+    </div>
+
+    <nav class="toc" aria-label="目次">
+      <h2>目次</h2>
+      <ol>
+        <li><a href="#sec-0">このマニュアルのゴールと全体像</a></li>
+        <li><a href="#sec-1">準備するもの（アカウント・ツール）</a></li>
+        <li><a href="#sec-2">パソコンで Clear Bid を動かす</a></li>
+        <li><a href="#sec-3">Anthropic（外部AI）のAPIキーを取る</a></li>
+        <li><a href="#sec-4">ローカルで提案文を本番寄りにする</a></li>
+        <li><a href="#sec-5">Cloudflare にログインして準備する</a></li>
+        <li><a href="#sec-6">D1データベースを作る（データを消さない箱）</a></li>
+        <li><a href="#sec-7">設定ファイルにデータベースIDを書く</a></li>
+        <li><a href="#sec-8">テーブルを作る（マイグレーション）</a></li>
+        <li><a href="#sec-9">Cloudflare Access で自分だけ入れるようにする</a></li>
+        <li><a href="#sec-10">秘密情報（Secrets）を Workers に入れる</a></li>
+        <li><a href="#sec-11">デプロイ（インターネットに公開）</a></li>
+        <li><a href="#sec-12">公開後の動作確認</a></li>
+        <li><a href="#sec-13">日々の使い方</a></li>
+        <li><a href="#sec-trouble">困ったとき</a></li>
+        <li><a href="#sec-checklist">最終チェックリスト</a></li>
+      </ol>
+    </nav>
+
+    <section id="sec-0">
+      <h2 class="section">0. このマニュアルのゴールと全体像</h2>
+      <p>最終的にこうなります。</p>
+      <div class="map">
+        <div class="card">
+          <h3>1. 外部AI</h3>
+          <p>提案文・抽出・返信案が、実際に応募して恥ずかしくない水準になる。</p>
+        </div>
+        <div class="card">
+          <h3>2. D1保存</h3>
+          <p>案件・診断履歴・作業時間が、ブラウザを変えても消えない。</p>
+        </div>
+        <div class="card">
+          <h3>3. Access認証</h3>
+          <p>インターネット上にあっても、自分以外はログインできない。</p>
+        </div>
+      </div>
+
+      <div class="callout why">
+        <div class="label">なぜこの順番？</div>
+        <p style="margin:0">
+          まず AI キーを入れて「提案文の質」を確認し、次にデータを残す箱（D1）を作り、
+          最後に鍵（Access）をかけてから公開します。先に公開だけすると、中身の薄いアプリが外に出ます。
+        </p>
+      </div>
+
+      <div class="callout warn">
+        <div class="label">大事な注意</div>
+        <ul style="margin:0">
+          <li>APIキーやパスワードは、チャット・スクリーンショット・GitHub に貼らない。</li>
+          <li>わからない英単語が出ても大丈夫。このマニュアルの通り進めれば動きます。</li>
+          <li>画面の文言は Cloudflare / Anthropic 側の更新で少し変わることがあります。近い名前を探してください。</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="sec-1">
+      <h2 class="section">1. 準備するもの（アカウント・ツール）</h2>
+      <table>
+        <thead>
+          <tr><th>必要なもの</th><th>何のため</th><th>費用の目安</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>GitHub アカウント + Clear Bid のリポジトリ</td>
+            <td>プログラムを置く場所</td>
+            <td>無料</td>
+          </tr>
+          <tr>
+            <td>Node.js（22以上推奨）と pnpm</td>
+            <td>パソコン上でアプリを動かす</td>
+            <td>無料</td>
+          </tr>
+          <tr>
+            <td>Anthropic アカウント</td>
+            <td>提案文などを賢くするAI</td>
+            <td>従量課金（少額から可）</td>
+          </tr>
+          <tr>
+            <td>Cloudflare アカウント</td>
+            <td>公開・データベース・自分専用ログイン</td>
+            <td>個人利用なら無料枠で足りることが多い</td>
+          </tr>
+          <tr>
+            <td>自分のメールアドレス</td>
+            <td>Access で「自分だけ」許可するため</td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>1-1. Node.js が入っているか確認</h3>
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">1</div>
+          <div>
+            <h4>ターミナル（黒い画面）を開く</h4>
+            <p>Mac なら「ターミナル」、Windows なら「PowerShell」や「Windows Terminal」。</p>
+          </div>
+        </div>
+        <div class="step-body">
+          <p>次を打ち込んで Enter します。</p>
+<pre><code>node -v
+pnpm -v</code></pre>
+          <div class="callout ok">
+            <div class="label">成功の見た目</div>
+            <p style="margin:0"><code>v22.x.x</code> のような数字と、<code>10.x</code> や <code>11.x</code> のような pnpm の数字が出ればOK。</p>
+          </div>
+          <div class="callout warn">
+            <div class="label">出てこないとき</div>
+            <p style="margin:0">
+              <a href="https://nodejs.org/" target="_blank" rel="noreferrer">https://nodejs.org/</a> から LTS を入れて再起動。
+              その後 <code>npm install -g pnpm</code> で pnpm を入れます。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-2">
+      <h2 class="section">2. パソコンで Clear Bid を動かす</h2>
+      <div class="callout why">
+        <div class="label">なぜ先にローカル？</div>
+        <p style="margin:0">
+          インターネット公開の前に、自分のPCだけで「画面が開く」「診断できる」を確認します。
+          ここで動くと、あとの設定ミスを切り分けやすくなります。
+        </p>
+      </div>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">1</div>
+          <div>
+            <h4>プロジェクトのフォルダへ移動する</h4>
+            <p>Clear Bid をクローン（ダウンロード）した場所で作業します。</p>
+          </div>
+        </div>
+        <div class="step-body">
+<pre><code>cd /path/to/Clear-Bid</code></pre>
+          <p>自分の環境では、実際のフォルダパスに置き換えてください。</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">2</div>
+          <div>
+            <h4>依存パッケージを入れる</h4>
+            <p>アプリが使う部品をまとめてダウンロードします。</p>
+          </div>
+        </div>
+        <div class="step-body">
+<pre><code>pnpm install</code></pre>
+          <div class="callout why">
+            <div class="label">なぜ？</div>
+            <p style="margin:0"><code>package.json</code> に書かれたライブラリを <code>node_modules</code> に入れる作業です。初回は数分かかります。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">3</div>
+          <div>
+            <h4>環境変数ファイルを作る</h4>
+            <p>秘密の設定を置くための <code>.env</code> を作ります。</p>
+          </div>
+        </div>
+        <div class="step-body">
+<pre><code>cp .env.example .env</code></pre>
+          <p>Windows PowerShell の場合:</p>
+<pre><code>Copy-Item .env.example .env</code></pre>
+          <div class="callout why">
+            <div class="label">なぜ .env？</div>
+            <p style="margin:0">
+              APIキーはプログラム本体に直書きしません。<code>.env</code> は GitHub に上がらないようにしてあり、自分のPCだけが知っている設定ファイルです。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">4</div>
+          <div>
+            <h4>開発サーバーを起動する</h4>
+            <p>自分のPC上でアプリを動かします。</p>
+          </div>
+        </div>
+        <div class="step-body">
+<pre><code>pnpm dev</code></pre>
+          <p>ブラウザで次を開きます。</p>
+<pre><code>http://localhost:3000</code></pre>
+          <div class="callout ok">
+            <div class="label">成功の見た目</div>
+            <p style="margin:0">Clear Bid の画面（ホーム / 診断 / 案件 / 自分）が開けばOK。この時点ではAIキーがなくても、簡易モード（フォールバック）で動きます。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-3">
+      <h2 class="section">3. Anthropic（外部AI）のAPIキーを取る</h2>
+      <p>
+        Anthropic は、Clear Bid が提案文や抽出を賢くするためのAIサービスです。
+        「APIキー」は、あなたのClear BidだけがAnthropicを使えるようにするパスワードみたいなものです。
+      </p>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">1</div>
+          <div>
+            <h4>Anthropic のサイトを開く</h4>
+            <p>ブラウザで次を開きます。</p>
+          </div>
+        </div>
+        <div class="step-body">
+          <p><a href="https://console.anthropic.com/" target="_blank" rel="noreferrer">https://console.anthropic.com/</a></p>
+          <ul class="clickpath">
+            <li data-n="1">右上あたりの <strong>Sign in / Log in</strong>（ログイン）をクリック</li>
+            <li data-n="2">Google やメールでアカウント作成・ログイン</li>
+            <li data-n="3">初回なら利用規約に同意し、必要なら支払い方法（Billing）を登録</li>
+          </ul>
+          <div class="callout why">
+            <div class="label">なぜ支払い登録？</div>
+            <p style="margin:0">無料枠だけでは足りない場合や、安定利用のためにカード登録が必要なことがあります。まずは少額の利用上限を設定しておくと安心です。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">2</div>
+          <div>
+            <h4>API Keys 画面へ行く</h4>
+            <p>キーを発行するページを開きます。</p>
+          </div>
+        </div>
+        <div class="step-body">
+          <ul class="clickpath">
+            <li data-n="1">左メニュー（または設定メニュー）から <strong>API Keys</strong> をクリック</li>
+            <li data-n="2"><strong>Create Key</strong>（キーを作成）をクリック</li>
+            <li data-n="3">名前はわかりやすく <code>clear-bid-local</code> などにする</li>
+            <li data-n="4">表示されたキー（だいたい <code>sk-ant-</code> で始まる長い文字列）をコピー</li>
+          </ul>
+          <div class="callout danger">
+            <div class="label">超重要</div>
+            <p style="margin:0">
+              キーは画面に一度しか出ないことが多いです。パスワード管理アプリやメモに保存してください。
+              GitHub や Slack に貼ると危険です。漏れたらすぐ削除して作り直します。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-4">
+      <h2 class="section">4. ローカルで提案文を本番寄りにする</h2>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">1</div>
+          <div>
+            <h4>.env を編集する</h4>
+            <p>Cursor / VS Code / メモ帳などでプロジェクト直下の <code>.env</code> を開きます。</p>
+          </div>
+        </div>
+        <div class="step-body">
+          <p>次のようにします（キーは自分のものに置き換え）。</p>
+<pre><code>AI_PROVIDER=auto
+ANTHROPIC_API_KEY=sk-ant-ここに貼る
+AI_MONTHLY_BUDGET_USD=3
+
+AUTH_BYPASS=true
+DEV_USER_EMAIL=あなたのメール@example.com</code></pre>
+          <table>
+            <thead><tr><th>項目</th><th>入れる値</th><th>意味</th></tr></thead>
+            <tbody>
+              <tr><td><code>AI_PROVIDER</code></td><td><code>auto</code></td><td>キーがあれば Anthropic、なければ簡易モード</td></tr>
+              <tr><td><code>ANTHROPIC_API_KEY</code></td><td><code>sk-ant-...</code></td><td>AIを使うための鍵</td></tr>
+              <tr><td><code>AUTH_BYPASS</code></td><td><code>true</code></td><td>ローカルではログイン省略（開発用）</td></tr>
+              <tr><td><code>DEV_USER_EMAIL</code></td><td>自分のメール</td><td>ローカル時の仮ユーザー名</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">2</div>
+          <div>
+            <h4>サーバーを再起動して確認</h4>
+            <p>設定変更後は、いったん止めてから起動し直します。</p>
+          </div>
+        </div>
+        <div class="step-body">
+          <ul class="clickpath">
+            <li data-n="1">ターミナルで <kbd>Ctrl</kbd> + <kbd>C</kbd>（Macも同じ）で <code>pnpm dev</code> を止める</li>
+            <li data-n="2">もう一度 <code>pnpm dev</code></li>
+            <li data-n="3">ブラウザで <code>http://localhost:3000/api/health</code> を開く</li>
+          </ul>
+          <p>次のようになっていればOKです。</p>
+<pre><code>{
+  "ok": true,
+  "anthropicConfigured": true,
+  ...
+}</code></pre>
+          <div class="callout ok">
+            <div class="label">実案件テスト</div>
+            <p style="margin:0">
+              画面の「診断」で、実際の募集文を貼って提案文まで進めてください。
+              テンプレっぽさが減り、あなたのスキル・実績を踏まえた文になっていれば成功です。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-5">
+      <h2 class="section">5. Cloudflare にログインして準備する</h2>
+      <p>Cloudflare は、Clear Bid をインターネットに置いて動かす場所です。データベース（D1）と、自分専用ログイン（Access）もここで作ります。</p>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">1</div>
+          <div>
+            <h4>アカウント作成 / ログイン</h4>
+            <p><a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noreferrer">https://dash.cloudflare.com/sign-up</a></p>
+          </div>
+        </div>
+        <div class="step-body">
+          <ul class="clickpath">
+            <li data-n="1">メールアドレスで Sign up（新規）または Log in</li>
+            <li data-n="2">ダッシュボード（管理画面）が開けばOK</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">2</div>
+          <div>
+            <h4>パソコンから Cloudflare にログインできるようにする（wrangler login）</h4>
+            <p>ターミナルから Cloudflare を操作するための許可です。</p>
+          </div>
+        </div>
+        <div class="step-body">
+<pre><code>pnpm exec wrangler login</code></pre>
+          <ul class="clickpath">
+            <li data-n="1">コマンドを実行するとブラウザが開く</li>
+            <li data-n="2"><strong>Allow</strong>（許可）をクリック</li>
+            <li data-n="3">ターミナルに成功メッセージが出ればOK</li>
+          </ul>
+          <div class="callout why">
+            <div class="label">なぜ？</div>
+            <p style="margin:0">このあと「データベース作成」「公開」をコマンドで行うため、あなたのCloudflareアカウントへの操作権限が必要です。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-6">
+      <h2 class="section">6. D1データベースを作る（データを消さない箱）</h2>
+      <p>
+        いまローカルだけだと、データはブラウザの localStorage（その端末の中）にあります。
+        D1 は Cloudflare 上のデータベースで、スマホや別PCからでも同じ案件履歴を見られるようにします。
+      </p>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">1</div>
+          <div>
+            <h4>D1 を作成する</h4>
+            <p>プロジェクトフォルダで次を実行します。</p>
+          </div>
+        </div>
+        <div class="step-body">
+<pre><code>pnpm exec wrangler d1 create clear-bid</code></pre>
+          <p>成功すると、だいたい次のような情報が表示されます。</p>
+<pre><code>[[d1_databases]]
+binding = "DB"
+database_name = "clear-bid"
+database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"</code></pre>
+          <div class="callout ok">
+            <div class="label">やること</div>
+            <p style="margin:0"><code>database_id</code> の長い英数字をコピーして控えてください。次の章で使います。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">2</div>
+          <div>
+            <h4>（任意）ダッシュボードでも確認する</h4>
+            <p>視覚的に確認したい人向けです。</p>
+          </div>
+        </div>
+        <div class="step-body">
+          <ul class="clickpath">
+            <li data-n="1"><a href="https://dash.cloudflare.com/" target="_blank" rel="noreferrer">Cloudflare Dashboard</a> を開く</li>
+            <li data-n="2">左メニューで <strong>Workers &amp; Pages</strong>（または Workers）をクリック</li>
+            <li data-n="3"><strong>D1</strong> をクリック</li>
+            <li data-n="4"><code>clear-bid</code> という名前のデータベースがあることを確認</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-7">
+      <h2 class="section">7. 設定ファイルにデータベースIDを書く</h2>
+      <p>Clear Bid に「どのD1を使うか」を教えます。</p>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">1</div>
+          <div>
+            <h4><code>wrangler.jsonc</code> を開く</h4>
+            <p>プロジェクト直下のファイルです。</p>
+          </div>
+        </div>
+        <div class="step-body">
+          <ul class="clickpath">
+            <li data-n="1">Cursor / VS Code の左のファイル一覧で <code>wrangler.jsonc</code> をクリック</li>
+            <li data-n="2"><code>REPLACE_WITH_D1_ID</code> という文字を探す</li>
+            <li data-n="3">さっき控えた <code>database_id</code> に置き換える</li>
+          </ul>
+<pre><code>"d1_databases": [
+  {
+    "binding": "DB",
+    "database_name": "clear-bid",
+    "database_id": "ここにコピーしたID",
+    "migrations_dir": "db/migrations"
+  }
+]</code></pre>
+          <div class="callout why">
+            <div class="label">なぜ？</div>
+            <p style="margin:0">
+              <code>binding: "DB"</code> は、プログラムから「DBという名前でこのデータベースを使う」という意味です。
+              IDを間違えると、保存したつもりでも別の場所を見に行ったり、エラーになります。
+            </p>
+          </div>
+          <div class="callout warn">
+            <div class="label">GitHub に上げてよいか</div>
+            <p style="margin:0">
+              <code>database_id</code> 自体は秘密鍵ほど危険ではありませんが、リポジトリが公開（Public）なら注意。
+              Private リポジトリ前提で進めるのが安心です。APIキーは絶対にこのファイルへ書かないでください。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-8">
+      <h2 class="section">8. テーブルを作る（マイグレーション）</h2>
+      <p>
+        データベースを作っただけでは「空っぽの箱」です。
+        マイグレーションは、箱の中に「ユーザー」「案件データ」などを入れる棚（テーブル）を作る作業です。
+      </p>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">1</div>
+          <div>
+            <h4>本番（リモート）のD1に棚を作る</h4>
+            <p>インターネット側のデータベースへ反映します。</p>
+          </div>
+        </div>
+        <div class="step-body">
+<pre><code>pnpm db:migrate:remote</code></pre>
+          <p>確認を聞かれたら <code>y</code> や Yes を選びます（表示に従ってください）。</p>
+          <div class="callout ok">
+            <div class="label">成功の見た目</div>
+            <p style="margin:0"><code>0001_init</code> などが Applied / success と出ればOK。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">2</div>
+          <div>
+            <h4>（任意）ローカル用D1にも作る</h4>
+            <p>ローカルでもD1を試したいとき。</p>
+          </div>
+        </div>
+        <div class="step-body">
+<pre><code>pnpm db:migrate:local</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-9">
+      <h2 class="section">9. Cloudflare Access で自分だけ入れるようにする</h2>
+      <p>
+        Access は「門番」です。Clear Bid のURLを知っていても、許可したメールでログインした人だけ中に入れます。
+        自分専用の仕事道具なので、ここは必ずやります。
+      </p>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">1</div>
+          <div>
+            <h4>Zero Trust を開く</h4>
+            <p>Access の管理画面に入ります。</p>
+          </div>
+        </div>
+        <div class="step-body">
+          <ul class="clickpath">
+            <li data-n="1"><a href="https://one.dash.cloudflare.com/" target="_blank" rel="noreferrer">https://one.dash.cloudflare.com/</a> を開く</li>
+            <li data-n="2">初回ならチーム名（Team name）を決めます。例: <code>yourname</code></li>
+            <li data-n="3">このチーム名が後で <code>CF_ACCESS_TEAM_DOMAIN</code> になります（例: チーム名が <code>namety</code> なら <code>namety</code>）</li>
+          </ul>
+          <div class="callout why">
+            <div class="label">なぜチーム名が必要？</div>
+            <p style="margin:0">Access のログイン画面や証明書の住所（ドメイン）が <code>https://チーム名.cloudflareaccess.com</code> になるためです。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">2</div>
+          <div>
+            <h4>Application（守るアプリ）を作る</h4>
+            <p>Clear Bid のURLに門番を立てます。</p>
+          </div>
+        </div>
+        <div class="step-body">
+          <ul class="clickpath">
+            <li data-n="1">左メニュー <strong>Access</strong> → <strong>Applications</strong></li>
+            <li data-n="2"><strong>Add an application</strong> をクリック</li>
+            <li data-n="3"><strong>Self-hosted</strong> を選ぶ</li>
+            <li data-n="4">Application name: <code>Clear Bid</code></li>
+            <li data-n="5">Session Duration: 例 <code>24 hours</code>（好みで可）</li>
+            <li data-n="6">Application domain / URL:
+              <br />あとでデプロイして分かる Workers のURL（例: <code>clear-bid.&lt;your-subdomain&gt;.workers.dev</code>）
+              <br />まだデプロイ前なら、先に仮で作って後から直してもOK。または次の章のデプロイ後に戻って設定</li>
+            <li data-n="7"><strong>Next</strong></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">3</div>
+          <div>
+            <h4>Policy（誰を通すか）を作る</h4>
+            <p>自分のメールだけ許可します。</p>
+          </div>
+        </div>
+        <div class="step-body">
+          <ul class="clickpath">
+            <li data-n="1">Policy name: <code>Only me</code></li>
+            <li data-n="2">Action: <strong>Allow</strong></li>
+            <li data-n="3">Include の条件で <strong>Emails</strong> を選ぶ</li>
+            <li data-n="4">Value に自分のメールアドレスを入れる（例: <code>you@example.com</code>）</li>
+            <li data-n="5"><strong>Next</strong> → 確認して <strong>Save / Add application</strong></li>
+          </ul>
+          <div class="callout why">
+            <div class="label">なぜメール指定？</div>
+            <p style="margin:0">「リンクを知っている人なら誰でも入れる」状態を防ぐためです。副業の案件情報や金額が入るので必須です。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">4</div>
+          <div>
+            <h4>AUD（Audience）を控える</h4>
+            <p>アプリ側が「正しい門番の通行証か」を確認するためのIDです。</p>
+          </div>
+        </div>
+        <div class="step-body">
+          <ul class="clickpath">
+            <li data-n="1">Applications 一覧で作った <strong>Clear Bid</strong> をクリック</li>
+            <li data-n="2"><strong>Overview</strong> や設定画面で <strong>Application Audience (AUD)</strong> を探す</li>
+            <li data-n="3">長い文字列をコピーして控える</li>
+          </ul>
+          <p>このあと使う値は2つです。</p>
+          <table>
+            <thead><tr><th>変数名</th><th>値の例</th><th>どこで取る</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>CF_ACCESS_TEAM_DOMAIN</code> / <code>NUXT_CF_ACCESS_TEAM_DOMAIN</code></td>
+                <td><code>namety</code>（チーム名だけ）</td>
+                <td>Zero Trust のチーム名。<code>.cloudflareaccess.com</code> は付けない</td>
+              </tr>
+              <tr>
+                <td><code>CF_ACCESS_AUD</code> / <code>NUXT_CF_ACCESS_AUD</code></td>
+                <td>長い英数字</td>
+                <td>Application の AUD</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-10">
+      <h2 class="section">10. 秘密情報（Secrets）を Workers に入れる</h2>
+      <p>
+        本番では <code>.env</code> は使えません（あなたのPCの中だけのものだから）。
+        Cloudflare Workers の「Secrets（秘密の設定）」に入れます。
+      </p>
+
+      <div class="callout warn">
+        <div class="label">順番のコツ</div>
+        <p style="margin:0">
+          Secrets はデプロイ後でも設定できます。ただし Access を有効にする前に、いったんアプリをデプロイしてURLを確定させる流れがわかりやすいです。
+          ここでは「値の意味」を先に覚え、次の章でデプロイ → Secrets 投入 → Access有効化、でもOKです。
+        </p>
+      </div>
+
+      <h3>入れるもの一覧</h3>
+      <table>
+        <thead><tr><th>Secret / 変数名</th><th>入れる内容</th><th>なぜ必要</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>NUXT_ANTHROPIC_API_KEY</code></td>
+            <td><code>sk-ant-...</code></td>
+            <td>本番でも賢い提案文を出す</td>
+          </tr>
+          <tr>
+            <td><code>NUXT_AI_PROVIDER</code></td>
+            <td><code>auto</code></td>
+            <td>キーがあるとき Anthropic を使う</td>
+          </tr>
+          <tr>
+            <td><code>NUXT_CF_ACCESS_TEAM_DOMAIN</code></td>
+            <td>チーム名（例 <code>namety</code>）</td>
+            <td>Access の通行証を検証するため</td>
+          </tr>
+          <tr>
+            <td><code>NUXT_CF_ACCESS_AUD</code></td>
+            <td>AUD文字列</td>
+            <td>このアプリ宛の通行証か確認するため</td>
+          </tr>
+          <tr>
+            <td><code>NUXT_AUTH_BYPASS</code></td>
+            <td><code>false</code></td>
+            <td>本番で門番をスキップしない</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>方法A: ダッシュボードで入れる（見た目がわかりやすい）</h3>
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">A</div>
+          <div>
+            <h4>Workers の設定画面から追加</h4>
+            <p>デプロイ後に Worker 名 <code>clear-bid</code> が見える前提です。</p>
+          </div>
+        </div>
+        <div class="step-body">
+          <ul class="clickpath">
+            <li data-n="1">Cloudflare Dashboard → <strong>Workers &amp; Pages</strong></li>
+            <li data-n="2"><code>clear-bid</code> をクリック</li>
+            <li data-n="3"><strong>Settings</strong> タブをクリック</li>
+            <li data-n="4"><strong>Variables and Secrets</strong>（変数とシークレット）を開く</li>
+            <li data-n="5"><strong>Add</strong> → 種類を <strong>Secret</strong> にして名前と値を入れる</li>
+            <li data-n="6">上の表を1つずつ追加して Save / Deploy</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>方法B: コマンドで入れる</h3>
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">B</div>
+          <div>
+            <h4>ターミナルから Secret を登録</h4>
+            <p>一度ビルドしてから実行します（設定ファイルの場所の都合）。</p>
+          </div>
+        </div>
+        <div class="step-body">
+<pre><code>pnpm build
+pnpm exec wrangler secret put NUXT_ANTHROPIC_API_KEY --config .output/server/wrangler.json
+pnpm exec wrangler secret put NUXT_CF_ACCESS_AUD --config .output/server/wrangler.json
+pnpm exec wrangler secret put NUXT_CF_ACCESS_TEAM_DOMAIN --config .output/server/wrangler.json</code></pre>
+          <p>実行すると「値を入力してください」と出るので、貼り付けて Enter します（画面には伏字になることが多いです）。</p>
+          <p>通常の変数（Secretでなくてよいもの）は Dashboard の Variables で:</p>
+<pre><code>NUXT_AI_PROVIDER=auto
+NUXT_AUTH_BYPASS=false</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-11">
+      <h2 class="section">11. デプロイ（インターネットに公開）</h2>
+      <div class="callout why">
+        <div class="label">デプロイとは？</div>
+        <p style="margin:0">あなたのパソコンの中にあるアプリを、Cloudflare のサーバーにアップロードして、URLで開けるようにすることです。</p>
+      </div>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">1</div>
+          <div>
+            <h4>公開コマンドを実行</h4>
+            <p>プロジェクトフォルダで:</p>
+          </div>
+        </div>
+        <div class="step-body">
+<pre><code>pnpm deploy</code></pre>
+          <p>内部ではビルドのあと <code>wrangler deploy</code> が走ります。初回は1〜数分かかります。</p>
+          <div class="callout ok">
+            <div class="label">成功の見た目</div>
+            <p style="margin:0">最後に <code>https://clear-bid.xxxxx.workers.dev</code> のような URL が出ます。これを控えます。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">2</div>
+          <div>
+            <h4>Access の Application URL をこのURLに合わせる</h4>
+            <p>まだ Access を作っていない / URLが仮だった場合はここで確定します。</p>
+          </div>
+        </div>
+        <div class="step-body">
+          <ul class="clickpath">
+            <li data-n="1">Zero Trust → Access → Applications → Clear Bid</li>
+            <li data-n="2">Application domain を、今出た Workers URL にする</li>
+            <li data-n="3">Save</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-12">
+      <h2 class="section">12. 公開後の動作確認</h2>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">1</div>
+          <div>
+            <h4>門番が出るか確認</h4>
+            <p>ブラウザのシークレットウィンドウで Workers URL を開きます。</p>
+          </div>
+        </div>
+        <div class="step-body">
+          <ul class="clickpath">
+            <li data-n="1">Cloudflare Access のログイン画面が出る</li>
+            <li data-n="2">許可した自分のメールでワンタイムコード等ログイン</li>
+            <li data-n="3">Clear Bid の画面が開く</li>
+          </ul>
+          <div class="callout danger">
+            <div class="label">門番なしで誰でも見えたら</div>
+            <p style="margin:0">
+              Access の Application URL が違うか、まだ未作成です。すぐに Access を設定してください。
+              また <code>NUXT_AUTH_BYPASS</code> が <code>true</code> のままなら <code>false</code> に直します。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">2</div>
+          <div>
+            <h4>ヘルスチェック</h4>
+            <p>ログイン後に次を開きます（Access通過後）。</p>
+          </div>
+        </div>
+        <div class="step-body">
+<pre><code>https://（あなたのURL）/api/health</code></pre>
+          <p>理想:</p>
+<pre><code>{
+  "ok": true,
+  "persistence": "d1",
+  "anthropicConfigured": true,
+  "accessConfigured": true
+}</code></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head">
+          <div class="step-num">3</div>
+          <div>
+            <h4>保存ができるか確認</h4>
+            <p>「自分」タブでプロフィールを保存し、別ブラウザ（またはシークレット）で再ログインして残っているか見ます。</p>
+          </div>
+        </div>
+        <div class="step-body">
+          <div class="callout ok">
+            <div class="label">成功</div>
+            <p style="margin:0">プロフィール画面の「接続状態」が <strong>Cloudflare D1</strong> になっていて、データが残っていればOK。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-13">
+      <h2 class="section">13. 日々の使い方</h2>
+      <ol>
+        <li>公開URLを開き、Access でログインする</li>
+        <li>「自分」でスキル・実績・稼働条件を入れる（提案文の材料）</li>
+        <li>気になる案件の募集文をコピーして「診断」に貼る</li>
+        <li>抽出を確認・必要なら手直し → 診断 → 提案文をコピーして応募</li>
+        <li>実際に応募したら「応募済みとして記録」を押す（コピーだけでは応募済みにならない）</li>
+        <li>返信が来たら案件詳細の「返信」に貼って回答案を作る</li>
+      </ol>
+      <div class="callout why">
+        <div class="label">覚えておくこと</div>
+        <p style="margin:0">
+          Clear Bid は自動応募しません。最終的にボタンを押すのはあなたです。
+          危険案件のBLOCKや金額計算も、AIではなくアプリのルールが担当します。
+        </p>
+      </div>
+    </section>
+
+    <section id="sec-trouble">
+      <h2 class="section">困ったとき</h2>
+      <table>
+        <thead><tr><th>症状</th><th>まず疑うこと</th><th>対処</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>anthropicConfigured: false</code></td>
+            <td>キー未設定 / 名前間違い</td>
+            <td>ローカルなら <code>.env</code> の <code>ANTHROPIC_API_KEY</code>。本番なら <code>NUXT_ANTHROPIC_API_KEY</code></td>
+          </tr>
+          <tr>
+            <td><code>persistence: "local"</code> のまま</td>
+            <td>D1未作成 / ID未記入 / マイグレーション未実施</td>
+            <td>章6〜8をやり直す。デプロイし直す</td>
+          </tr>
+          <tr>
+            <td>401 Unauthorized</td>
+            <td>Access未ログイン / AUD不一致 / bypass誤設定</td>
+            <td>正しいメールでログイン。AUDとチーム名を見直す</td>
+          </tr>
+          <tr>
+            <td>提案文がテンプレっぽい</td>
+            <td>フォールバック動作中</td>
+            <td>キー設定と <code>/api/health</code> を確認。プロフィール実績を充実させる</td>
+          </tr>
+          <tr>
+            <td><code>pnpm deploy</code> 失敗</td>
+            <td>未ログイン / database_id が REPLACE のまま</td>
+            <td><code>wrangler login</code> と章7を確認</td>
+          </tr>
+          <tr>
+            <td>データが消えたように見える</td>
+            <td>別ユーザー / 別ブラウザのローカルキャッシュ</td>
+            <td>Accessのメールが同じか確認。D1同期後は再ログインして確認</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="sec-checklist">
+      <h2 class="section">最終チェックリスト</h2>
+      <div class="card" style="padding:16px 18px">
+        <div class="checklist">
+          <label><input type="checkbox" /> Node.js と pnpm が入っている</label>
+          <label><input type="checkbox" /> <code>pnpm install</code> と <code>pnpm dev</code> で画面が開く</label>
+          <label><input type="checkbox" /> Anthropic の API キーを発行した（チャットに貼っていない）</label>
+          <label><input type="checkbox" /> ローカル <code>.env</code> にキーを入れ、<code>anthropicConfigured: true</code></label>
+          <label><input type="checkbox" /> 実案件で提案文まで試した</label>
+          <label><input type="checkbox" /> <code>wrangler login</code> 済み</label>
+          <label><input type="checkbox" /> D1 <code>clear-bid</code> を作成し、<code>wrangler.jsonc</code> に ID を書いた</label>
+          <label><input type="checkbox" /> <code>pnpm db:migrate:remote</code> 成功</label>
+          <label><input type="checkbox" /> <code>pnpm deploy</code> で URL を取得</label>
+          <label><input type="checkbox" /> Access で自分のメールだけ Allow</label>
+          <label><input type="checkbox" /> Secrets（Anthropic / Team / AUD）を入れ、<code>AUTH_BYPASS=false</code></label>
+          <label><input type="checkbox" /> シークレットウィンドウで門番 → ログイン → 保存確認</label>
+          <label><input type="checkbox" /> <code>/api/health</code> が d1 / anthropic / access すべて true 系</label>
+        </div>
+      </div>
+
+      <div class="callout ok" style="margin-top:18px">
+        <div class="label">ここまでできたら</div>
+        <p style="margin:0">Clear Bid は「仕事を取るための自分専用ツール」として使える状態です。あとは実案件で回して、使いにくいところだけ改善していきましょう。</p>
+      </div>
+    </section>
+
+    <p class="footer">
+      Clear Bid Setup Manual · リポジトリ内 <code>docs/manual/clear-bid-setup-manual.html</code><br />
+      PDF化: 上の「PDFとして保存 / 印刷」→ 送信先を「PDFに保存」
+    </p>
+  </div>
+
+  <script>
+    // Persist checklist ticks in this browser only.
+    document.querySelectorAll('.checklist input[type="checkbox"]').forEach((el, i) => {
+      const key = 'cb-manual-check-' + i
+      el.checked = localStorage.getItem(key) === '1'
+      el.addEventListener('change', () => {
+        localStorage.setItem(key, el.checked ? '1' : '0')
+      })
+    })
+  </script>
+</body>
+</html>
