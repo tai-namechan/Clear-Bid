@@ -8,11 +8,11 @@ alwaysApply: true
 ## 開発環境
 
 - **スタック**: Nuxt 4 + Vue 3 + TypeScript + Tailwind CSS + Nitro
-- **永続化（現段階）**: localStorage（dogfooding）。D1 + Drizzle schema は定義済み・接続は後続
-- **AI（現段階）**: `server/ai` のプロバイダー抽象 + fallback。外部 API 本接続は後続
+- **永続化**: D1 `user_documents`（本番）+ localStorage キャッシュ。D1 未バインド時は localStorage のみ
+- **AI**: Anthropic（`AI_PROVIDER=auto|anthropic`）+ 失敗時フォールバック
 - **パッケージマネージャ**: pnpm
 - **テスト**: Vitest（unit）。Playwright E2E は後続
-- **デプロイ想定**: Cloudflare Workers（`wrangler.jsonc`）。Access / 本番 D1 は後続
+- **デプロイ**: Cloudflare Workers + D1 + Access（`docs/DEPLOY.md`）
 
 ## ディレクトリの正
 
@@ -43,4 +43,4 @@ tests/         # unit / integration / e2e
 ## フェーズ運用
 
 - 実装は仕様の Phase 単位で PR を切り、main へマージしてから次へ進む
-- Access / D1 本番 / 外部 AI は最終まとめて対応
+- Access / D1 / Anthropic は配線済み。運用手順は `docs/DEPLOY.md`

@@ -6,40 +6,45 @@
 
 ## 技術スタック
 
-- Nuxt 4 / Vue 3 / TypeScript
-- Tailwind CSS
+- Nuxt 4 / Vue 3 / TypeScript / Tailwind / Nitro
 - Zod（AI構造化出力の検証）
-- Drizzle ORM schema（Cloudflare D1 向け。Phase 0 で定義）
-- Vitest
+- Anthropic（外部 AI）+ fallback
+- Cloudflare Workers + D1 + Access
+- Drizzle ORM / Vitest
 
 ## 開発
 
 ```bash
 pnpm install
+cp .env.example .env
+# ANTHROPIC_API_KEY を入れると提案文が本番品質寄りになります
 pnpm dev
 ```
 
-http://localhost:3000 でモバイル幅（最大 430px）の SPA が開きます。
+http://localhost:3000
 
 ```bash
 pnpm test
 pnpm build
 ```
 
-## 現在の実装範囲（Phase 0〜2 土台）
+## デプロイ
 
-- ホーム / 診断 / 案件 / 自分 の 4 タブ UI
-- 診断フロー: 入力 → 抽出確認 → 安全・工数 → 5軸結果 → 提案文
-- ルールベース安全チェック（初期カタログ）
-- 手数料・手取り・実質時給・判断候補のアプリ側計算
-- AI プロバイダー抽象化 + オフライン fallback（API キーなしでも診断可能）
-- localStorage によるプロフィール・パイプライン・統計の永続化
-- D1 向け Drizzle schema
+手順は [`docs/DEPLOY.md`](docs/DEPLOY.md)。
 
-## 環境変数
+```bash
+pnpm deploy
+```
 
-`.env.example` を参照。外部 AI を使う場合のみ `ANTHROPIC_API_KEY` 等を設定します。未設定時は fallback プロバイダーが動作します。
+## いまできること
 
-## 仕様書
+- 診断フロー（入力 → 抽出 → 安全・工数 → 5軸 → 提案文）
+- 返信支援・応募確認・提案型の再生成
+- ルールベースの安全性 / 推奨 / 金額計算（AI に委譲しない）
+- D1 同期（本番）+ localStorage キャッシュ
+- Cloudflare Access による自分だけログイン
 
-`docs/clear-bid-spec-v1.0.pdf`
+## 仕様
+
+- `docs/clear-bid-spec-v1.0.pdf`
+- `docs/IMPLEMENTATION.md`

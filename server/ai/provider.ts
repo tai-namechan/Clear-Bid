@@ -8,6 +8,7 @@ import type {
 import type { UserProfile } from '../../shared/types'
 import { estimateEffortHeuristic } from '../domain/money'
 import { buildAxes, decideRecommendation } from '../domain/recommendation'
+import { AnthropicAiProvider } from './anthropic'
 
 export interface ExtractionInput {
   title: string
@@ -273,8 +274,76 @@ export class FallbackAiProvider implements AiProvider {
   }
 }
 
-export function getAiProvider(): AiProvider {
-  // External providers (Anthropic / Workers AI) can be swapped here via runtimeConfig.
-  // MVP ships with fallback so dogfooding works without API keys.
+/** Wraps a primary provider and falls back on hard failures. */
+export class ResilientAiProvider implements AiProvider {
+  constructor(
+    private readonly primary: AiProvider,
+    private readonly fallback: AiProvider = new FallbackAiProvider(),
+  ) {}
+
+  async extract(input: ExtractionInput) {
+    try {
+      return await this.primary.extract(input)
+    } catch (e) {
+      console.error('[ai] extract failed, using fallback', e)
+      return this.fallback.extract(input)
+    }
+  }
+
+  async estimate(input: EstimateInput) {
+    try {
+      return await this.primary.estimate(input)
+    } catch (e) {
+      console.error('[ai] estimate failed, using fallback', e)
+      return this.fallback.estimate(input)
+    }
+  }
+
+  async diagnose(input: DiagnosisInput) {
+    try {
+      return await this.primary.diagnose(input)
+    } catch (e) {
+      console.error('[ai] diagnose failed, using fallback', e)
+      return this.fallback.diagnose(input)
+    }
+  }
+
+  async generateProposal(input: ProposalInput) {
+    try {
+      return await this.primary.generateProposal(input)
+    } catch (e) {
+      console.error('[ai] proposal failed, using fallback', e)
+      return this.fallback.generateProposal(input)
+    }
+  }
+
+  async assistReply(input: ReplyInput) {
+    try {
+      return await this.primary.assistReply(input)
+    } catch (e) {
+      console.error('[ai] reply failed, using fallback', e)
+      return this.fallback.assistReply(input)
+    }
+  }
+}
+
+export function getAiProvider(overrides?: { aiProvider?: string; anthropicApiKey?: string }): AiProvider {
+  let provider = overrides?.aiProvider
+  let apiKey = overrides?.anthropicApiKey
+  if (provider == null || apiKey == null) {
+    try {
+      const config = useRuntimeConfig()
+      provider = provider ?? String(config.aiProvider || 'fallback')
+      apiKey = apiKey ?? String(config.anthropicApiKey || '')
+    } catch {
+      provider = provider ?? 'fallback'
+      apiKey = apiKey ?? ''
+    }
+  }
+
+  if ((provider === 'anthropic' || provider === 'auto') && apiKey) {
+    return new ResilientAiProvider(new AnthropicAiProvider(apiKey))
+  }
+
   return new FallbackAiProvider()
 }
