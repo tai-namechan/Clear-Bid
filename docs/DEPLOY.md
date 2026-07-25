@@ -2,6 +2,10 @@
 
 Clear Bid を自分用の仕事道具として Cloudflare に載せる手順。
 
+**初めての人・画面クリックまで知りたい人はこちら（推奨）:**  
+[`docs/manual/clear-bid-setup-manual.html`](./manual/clear-bid-setup-manual.html)  
+ブラウザで開いて、印刷ダイアログから PDF 保存できます。
+
 ## 1. 前提
 
 - Cloudflare アカウント

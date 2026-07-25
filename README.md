@@ -28,9 +28,14 @@ pnpm test
 pnpm build
 ```
 
-## デプロイ
+## セットアップ手順（初めての人向け）
 
-手順は [`docs/DEPLOY.md`](docs/DEPLOY.md)。
+画面のクリック順まで書いたマニュアル:
+
+- ブラウザで開く: [`docs/manual/clear-bid-setup-manual.html`](docs/manual/clear-bid-setup-manual.html)
+- 開き方: [`docs/manual/README.md`](docs/manual/README.md)
+
+技術者向けの短い手順: [`docs/DEPLOY.md`](docs/DEPLOY.md)
 
 ```bash
 pnpm deploy
