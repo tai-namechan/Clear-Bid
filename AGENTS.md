@@ -4,7 +4,9 @@
 
 ## スタック
 
-Nuxt 4 / Vue 3 / TypeScript / Tailwind / Nitro。永続化は当面 localStorage。D1・Access・外部 AI 本接続は後続。
+Nuxt 4 / Vue 3 / TypeScript / Tailwind / Nitro。  
+永続化は Cloudflare D1（`user_documents`）+ localStorage キャッシュ。  
+認証は Cloudflare Access JWT。AI は Anthropic（失敗時フォールバック）。
 
 ## 必読ルール
 
@@ -23,10 +25,10 @@ Nuxt 4 / Vue 3 / TypeScript / Tailwind / Nitro。永続化は当面 localStorage
 
 - `docs/clear-bid-spec-v1.0.pdf`
 - `docs/IMPLEMENTATION.md`
+- `docs/DEPLOY.md`
 
 ## やってはいけないこと（要約）
 
 - 金額計算・BLOCK 最終確定を AI に任せる
 - 総合点バーを作る
 - スクレイピング / 自動応募
-- Access / 本番 D1 / 外部 AI をユーザー指示前に本実装する

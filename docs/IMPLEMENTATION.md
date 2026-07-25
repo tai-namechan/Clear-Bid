@@ -7,41 +7,31 @@ Based on Clear Bid MVP Spec v1.0.
 ### Phase 0 — Project foundation
 - Nuxt 4 + TypeScript + Tailwind SPA (`ssr: false`)
 - Repository layout matching spec §16.7
-- Drizzle schema for D1 tables
+- Drizzle schema for D1 tables + SQL migrations
 - Unified API error shape
 - Vitest unit tests + GitHub Actions CI
-- `wrangler.jsonc` stub for Cloudflare Workers / D1
+- `wrangler.jsonc` for Cloudflare Workers / D1
 - Cursor rules/skills (Clear Dawn 概念移植)
 
 ### Phase 1 — Usable without AI
-- Profile (skills / achievements / capacity / NG)
-- Pipeline list + status filters（判断中〜入金済み）
-- Opportunity 詳細（概要 / ステータス履歴 / 作業時間 / 金額）
-- ステータス遷移（理由必須: 見送り・失注・キャンセル）
-- 作業時間・見積り誤差率・実績時給
-- 契約額・手数料・税引前手取り・入金
-- Home empty state + KPI funnel + 次のアクション
-- localStorage persistence for dogfooding
+- Profile / Pipeline / Opportunity 詳細
+- ステータス・作業時間・金額・KPI
+- localStorage persistence（端末キャッシュとして継続）
 
 ### Phase 2 — Judgment (rule-first)
-- Rule-based safety catalog + engine
-- Heuristic extraction / effort / 5-axis diagnosis fallback
-- Recommendation rules (apply / question / skip) computed in app code
-- Fee / take-home / effective hourly helpers (not delegated to AI)
-- 抽出結果の編集・「確定にする」（推定は計算に使わない）
-- 工数3点のユーザー編集・バッファ編集
-- BLOCK 解除（理由必須・履歴保持）
-- 診断バージョンを Opportunity に追記保存
+- Safety rules / 抽出確定 / 工数編集 / BLOCK 解除 / 診断バージョン
 
 ### Phase 3 — Acquisition support
-- Proposal generation via AI provider interface + fallback template
-- Copy と「応募済みとして記録」を分離（適用確認ダイアログ）
-- 提案型の指定再生成（課題解決型 / 実績・証拠型 / 進め方明確型）
-- 返信支援（貼り付け → 解析・回答案・条件変更検知）
-- 再診断導線（条件変更時は診断バージョンを追記）
-- AI 利用 Soft Gate（抽出 / 診断 / 提案 / 返信）とプロフィール上の残枠表示
+- 提案文・応募確認・型再生成・返信支援・AI Soft Gate
 
-## Deferred (最後にまとめて)
-- Cloudflare Access JWT auth
-- Live D1 repositories / migrations apply
-- External AI providers (Anthropic / Workers AI) wiring
+### Production wiring — AI / D1 / Access
+- Anthropic provider（`AI_PROVIDER=auto|anthropic` + API key）
+- 失敗時フォールバック provider
+- D1 `user_documents` 同期 API（`/api/sync`）+ store デュアルライト
+- Cloudflare Access JWT 検証（未設定時は AUTH_BYPASS / 開発ユーザー）
+- `/api/me` `/api/health`、デプロイ手順は `docs/DEPLOY.md`
+
+## Notes
+- Money / recommendation / BLOCK の最終確定は AI に委譲しない
+- Workers AI は未配線（Anthropic を本番パスとする）
+- 正規化テーブル（opportunities 等）はスキーマ上あり。現行ランタイムは documents 同期

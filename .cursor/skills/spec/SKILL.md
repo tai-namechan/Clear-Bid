@@ -43,7 +43,7 @@ description: >-
 ## 注意
 
 - 確信度80%未満は断定しない
-- Access / 本番 D1 / 外部 AI 本接続は後回し領域。勝手に実装計画の前提にしない（必要なら別枠で提案）
+- Access / D1 / Anthropic は配線済み。詳細は `docs/DEPLOY.md`
 
 ## 出力フォーマット
 

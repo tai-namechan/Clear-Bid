@@ -26,7 +26,9 @@ import {
   type WorkLog,
 } from '#shared/opportunity'
 
-async function load<T>(key: string, fallback: T): Promise<T> {
+type SyncKey = 'profile' | 'pipeline' | 'stats' | 'ai_usage'
+
+async function loadLocal<T>(key: string, fallback: T): Promise<T> {
   if (!import.meta.client) return fallback
   try {
     const raw = localStorage.getItem(key)
@@ -36,12 +38,24 @@ async function load<T>(key: string, fallback: T): Promise<T> {
   }
 }
 
-async function save<T>(key: string, value: T): Promise<void> {
+async function saveLocal<T>(key: string, value: T): Promise<void> {
   if (!import.meta.client) return
   try {
     localStorage.setItem(key, JSON.stringify(value))
   } catch (e) {
     console.error(e)
+  }
+}
+
+async function syncPut(key: SyncKey, value: unknown, d1Enabled: Ref<boolean>) {
+  if (!import.meta.client || !d1Enabled.value) return
+  try {
+    await $fetch('/api/sync', {
+      method: 'PUT',
+      body: { key, value },
+    })
+  } catch (e) {
+    console.warn('[sync] put failed, kept local copy', key, e)
   }
 }
 
@@ -74,44 +88,106 @@ function recomputeStats(items: Opportunity[], base?: AppStats): AppStats {
   return s
 }
 
+function normalizePipeline(raw: Partial<Opportunity>[]): Opportunity[] {
+  return raw.map((r) =>
+    normalizeOpportunity({
+      id: r.id || ulid(),
+      title: r.title || '無題',
+      platform: (r.platform as Opportunity['platform']) || 'crowdworks',
+      status: (r.status as StatusCode) || 'draft',
+      date: r.date || new Date().toISOString().slice(0, 10),
+      ...r,
+    }),
+  )
+}
+
 export function useClearBidStore() {
   const profile = useState<UserProfile>('cb-profile', () => ({ ...INIT_PROFILE }))
   const pipeline = useState<Opportunity[]>('cb-pipeline', () => [])
   const stats = useState<AppStats>('cb-stats', () => ({ ...INIT_STATS }))
   const usage = useState<AiUsageState>('cb-usage', () => emptyUsage())
   const ready = useState<boolean>('cb-ready', () => false)
+  const d1Enabled = useState<boolean>('cb-d1', () => false)
+  const sessionUser = useState<{ id: string; email: string; displayName?: string | null } | null>('cb-user', () => null)
 
   const init = async () => {
     if (ready.value) return
-    profile.value = await load(STORAGE_KEYS.PROFILE, { ...INIT_PROFILE })
-    const raw = await load<Partial<Opportunity>[]>(STORAGE_KEYS.PIPELINE, [])
-    pipeline.value = raw.map((r) =>
-      normalizeOpportunity({
-        id: r.id || ulid(),
-        title: r.title || '無題',
-        platform: (r.platform as Opportunity['platform']) || 'crowdworks',
-        status: (r.status as StatusCode) || 'draft',
-        date: r.date || new Date().toISOString().slice(0, 10),
-        ...r,
-      }),
-    )
-    const loadedStats = await load(STORAGE_KEYS.STATS, { ...INIT_STATS })
-    stats.value = { ...recomputeStats(pipeline.value, loadedStats), diagnosed: loadedStats.diagnosed || 0 }
-    usage.value = await load(STORAGE_KEYS.AI_USAGE, emptyUsage())
+
+    // Prefer D1 when bound; otherwise localStorage. Always keep a local cache.
+    let fromD1 = false
+    try {
+      const sync = await $fetch<{
+        mode: string
+        user?: { id: string; email: string; displayName?: string | null }
+        documents?: Partial<Record<SyncKey, unknown>> | null
+      }>('/api/sync')
+      if (sync.mode === 'd1' && sync.documents) {
+        fromD1 = true
+        d1Enabled.value = true
+        sessionUser.value = sync.user || null
+        if (sync.documents.profile) profile.value = sync.documents.profile as UserProfile
+        if (Array.isArray(sync.documents.pipeline)) {
+          pipeline.value = normalizePipeline(sync.documents.pipeline as Partial<Opportunity>[])
+        }
+        if (sync.documents.stats) {
+          const loadedStats = sync.documents.stats as AppStats
+          stats.value = { ...recomputeStats(pipeline.value, loadedStats), diagnosed: loadedStats.diagnosed || 0 }
+        }
+        if (sync.documents.ai_usage) usage.value = sync.documents.ai_usage as AiUsageState
+      }
+    } catch {
+      d1Enabled.value = false
+    }
+
+    if (!fromD1) {
+      profile.value = await loadLocal(STORAGE_KEYS.PROFILE, { ...INIT_PROFILE })
+      pipeline.value = normalizePipeline(await loadLocal<Partial<Opportunity>[]>(STORAGE_KEYS.PIPELINE, []))
+      const loadedStats = await loadLocal(STORAGE_KEYS.STATS, { ...INIT_STATS })
+      stats.value = { ...recomputeStats(pipeline.value, loadedStats), diagnosed: loadedStats.diagnosed || 0 }
+      usage.value = await loadLocal(STORAGE_KEYS.AI_USAGE, emptyUsage())
+
+      // If D1 just became available empty, seed it from local cache once.
+      try {
+        const me = await $fetch<{ persistence: string; user: { id: string; email: string; displayName?: string | null } }>('/api/me')
+        if (me.persistence === 'd1') {
+          d1Enabled.value = true
+          sessionUser.value = me.user
+          await Promise.all([
+            syncPut('profile', profile.value, d1Enabled),
+            syncPut('pipeline', pipeline.value, d1Enabled),
+            syncPut('stats', stats.value, d1Enabled),
+            syncPut('ai_usage', usage.value, d1Enabled),
+          ])
+        }
+      } catch {
+        /* local-only */
+      }
+    } else {
+      await Promise.all([
+        saveLocal(STORAGE_KEYS.PROFILE, profile.value),
+        saveLocal(STORAGE_KEYS.PIPELINE, pipeline.value),
+        saveLocal(STORAGE_KEYS.STATS, stats.value),
+        saveLocal(STORAGE_KEYS.AI_USAGE, usage.value),
+      ])
+    }
+
     ready.value = true
   }
 
   const persistPipeline = async (items: Opportunity[]) => {
     pipeline.value = items
-    await save(STORAGE_KEYS.PIPELINE, items)
+    await saveLocal(STORAGE_KEYS.PIPELINE, items)
     const next = recomputeStats(items, stats.value)
     stats.value = next
-    await save(STORAGE_KEYS.STATS, next)
+    await saveLocal(STORAGE_KEYS.STATS, next)
+    await syncPut('pipeline', items, d1Enabled)
+    await syncPut('stats', next, d1Enabled)
   }
 
   const saveProfile = async (p: UserProfile) => {
     profile.value = p
-    await save(STORAGE_KEYS.PROFILE, p)
+    await saveLocal(STORAGE_KEYS.PROFILE, p)
+    await syncPut('profile', p, d1Enabled)
   }
 
   const savePipeline = async (items: PipelineItem[]) => {
@@ -120,12 +196,14 @@ export function useClearBidStore() {
 
   const saveStats = async (s: AppStats) => {
     stats.value = s
-    await save(STORAGE_KEYS.STATS, s)
+    await saveLocal(STORAGE_KEYS.STATS, s)
+    await syncPut('stats', s, d1Enabled)
   }
 
   const persistUsage = async (u: AiUsageState) => {
     usage.value = u
-    await save(STORAGE_KEYS.AI_USAGE, u)
+    await saveLocal(STORAGE_KEYS.AI_USAGE, u)
+    await syncPut('ai_usage', u, d1Enabled)
   }
 
   const assertAiBudget = (op: AiOperation) => {
@@ -286,6 +364,8 @@ export function useClearBidStore() {
     stats,
     usage,
     ready,
+    d1Enabled,
+    sessionUser,
     init,
     saveProfile,
     savePipeline,

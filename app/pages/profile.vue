@@ -4,7 +4,7 @@ import type { UserProfile } from '#shared/types'
 import { AI_USAGE_LIMITS } from '#shared/constants'
 import { currentPeriod } from '#shared/domain/usage'
 
-const { profile, saveProfile, usage } = useClearBidStore()
+const { profile, saveProfile, usage, d1Enabled, sessionUser } = useClearBidStore()
 const p = ref<UserProfile>({ ...profile.value })
 const ok = ref(false)
 const ns = ref('')
@@ -170,6 +170,15 @@ function addNg() {
         >
           追加
         </button>
+      </div>
+    </section>
+
+    <section class="mb-4">
+      <p class="mb-2 text-[13px] font-bold text-slate-900">接続状態</p>
+      <div class="cb-card mb-0 text-xs text-slate-600">
+        <p class="m-0">保存先: {{ d1Enabled ? 'Cloudflare D1（+ 端末キャッシュ）' : 'この端末の localStorage' }}</p>
+        <p v-if="sessionUser" class="m-0 mt-1">ログイン: {{ sessionUser.email }}</p>
+        <p v-else class="m-0 mt-1 text-slate-400">未同期（ローカル利用）</p>
       </div>
     </section>
 

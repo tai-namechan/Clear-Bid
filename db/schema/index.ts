@@ -1,6 +1,6 @@
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, real, primaryKey } from 'drizzle-orm/sqlite-core'
 
-/** Drizzle schema for Cloudflare D1 (spec §14). Phase 0 defines shape; runtime still uses local storage until Access/D1 are wired. */
+/** Drizzle schema for Cloudflare D1. */
 
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
@@ -11,6 +11,20 @@ export const users = sqliteTable('users', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })
+
+/** App-state documents (mirrors localStorage keys for durable sync). */
+export const userDocuments = sqliteTable(
+  'user_documents',
+  {
+    userId: text('user_id').notNull(),
+    key: text('key').notNull(),
+    json: text('json').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.key] }),
+  }),
+)
 
 export const profiles = sqliteTable('profiles', {
   userId: text('user_id').primaryKey(),
