@@ -1,31 +1,28 @@
 # Clear Bid セットアップマニュアル
 
-ジュニア向けの手順書です。
+## スマホで開く（これを使う）
 
-## スマホで開く（ここを使う）
+GitHub / jsDelivr の HTML は **コードの文字** になってしまいます（仕様です）。
 
-GitHub の Raw は **コードの文字** として出るので、マニュアル画面にはなりません。
+**スマホではこの Markdown を開いてください（GitHub が画面として表示します）:**
 
-**表示用リンク（これを開く）:**
+https://github.com/tai-namechan/Clear-Bid/blob/main/docs/manual/clear-bid-setup-manual.md
 
-https://cdn.jsdelivr.net/gh/tai-namechan/Clear-Bid@main/docs/manual/clear-bid-setup-manual.html
-
-予備:
-
-https://htmlpreview.github.io/?https://github.com/tai-namechan/Clear-Bid/blob/main/docs/manual/clear-bid-setup-manual.html
+GitHub アプリでも、スマホのブラウザでもOKです。
 
 ## PCで開く
 
-1. ファイル: [`clear-bid-setup-manual.html`](./clear-bid-setup-manual.html)
-2. ブラウザで開く（ダブルクリックでも可）
-3. PDF にする: 画面上部の **「PDFとして保存 / 印刷」** → **「PDFに保存」**
+- Markdown: [`clear-bid-setup-manual.md`](./clear-bid-setup-manual.md)（GitHub上で読む）
+- HTML: [`clear-bid-setup-manual.html`](./clear-bid-setup-manual.html)  
+  → **PCのファイルをダブルクリック**でブラウザ表示（GitHub上のRawは不可）
+- PDF: PCで HTML を開いて「印刷 → PDFに保存」
 
-## アプリから開く（ローカル / デプロイ後）
+## アプリ起動中
 
-`pnpm dev` 中、またはデプロイ後:
+`pnpm dev` またはデプロイ後:
 
 `/manual/clear-bid-setup-manual.html`
 
 例: `http://localhost:3000/manual/clear-bid-setup-manual.html`
 
-技術者向けの短い手順は [`../DEPLOY.md`](../DEPLOY.md) を参照。
+技術者向け短い手順: [`../DEPLOY.md`](../DEPLOY.md)

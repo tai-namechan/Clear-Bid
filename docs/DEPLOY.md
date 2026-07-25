@@ -2,9 +2,12 @@
 
 Clear Bid を自分用の仕事道具として Cloudflare に載せる手順。
 
-**初めての人・画面クリックまで知りたい人はこちら（推奨）:**  
-[`docs/manual/clear-bid-setup-manual.html`](./manual/clear-bid-setup-manual.html)  
-ブラウザで開いて、印刷ダイアログから PDF 保存できます。
+**初めての人・画面クリックまで知りたい人はこちら（推奨）:**
+
+- **スマホ:** [`docs/manual/clear-bid-setup-manual.md`](./manual/clear-bid-setup-manual.md)（GitHub上でそのまま読める）
+- **PC:** [`docs/manual/clear-bid-setup-manual.html`](./manual/clear-bid-setup-manual.html) をローカルで開く / 印刷から PDF 保存
+
+> GitHub Raw や jsDelivr の HTML は `text/plain` のためコード表示になります。スマホは Markdown を使ってください。
 
 ## 1. 前提
 
