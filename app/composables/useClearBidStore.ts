@@ -360,6 +360,61 @@ export function useClearBidStore() {
     return updated
   }
 
+  /** Export all app data as a portable JSON backup. */
+  const exportBackup = () => {
+    const draft = import.meta.client ? localStorage.getItem(STORAGE_KEYS.DRAFT_INPUT) : null
+    let draftInput: unknown = null
+    if (draft) {
+      try {
+        draftInput = JSON.parse(draft)
+      } catch {
+        draftInput = null
+      }
+    }
+    return {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      app: 'clear-bid',
+      profile: profile.value,
+      pipeline: pipeline.value,
+      stats: stats.value,
+      ai_usage: usage.value,
+      draft_input: draftInput,
+    }
+  }
+
+  /** Replace local (+ D1 if bound) state from a backup JSON. */
+  const importBackup = async (raw: unknown) => {
+    const data = raw as {
+      version?: number
+      profile?: UserProfile
+      pipeline?: Partial<Opportunity>[]
+      stats?: AppStats
+      ai_usage?: AiUsageState
+      draft_input?: unknown
+    }
+    if (!data || typeof data !== 'object') throw new Error('バックアップの形式が不正です')
+    if (!data.profile && !Array.isArray(data.pipeline)) {
+      throw new Error('プロフィールまたは案件データが見つかりません')
+    }
+
+    if (data.profile) {
+      await saveProfile(normalizeProfile(data.profile))
+    }
+    if (Array.isArray(data.pipeline)) {
+      await persistPipeline(normalizePipeline(data.pipeline))
+    }
+    if (data.stats) {
+      await saveStats({ ...INIT_STATS, ...data.stats })
+    }
+    if (data.ai_usage) {
+      await persistUsage(data.ai_usage)
+    }
+    if (data.draft_input != null && import.meta.client) {
+      await saveLocal(STORAGE_KEYS.DRAFT_INPUT, data.draft_input)
+    }
+  }
+
   return {
     profile,
     pipeline,
@@ -382,5 +437,7 @@ export function useClearBidStore() {
     assertAiBudget,
     trackAiSuccess,
     trackAiFailure,
+    exportBackup,
+    importBackup,
   }
 }
