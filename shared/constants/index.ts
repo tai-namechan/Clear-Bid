@@ -2,7 +2,15 @@ export const PLATFORMS = {
   crowdworks: 'クラウドワークス',
   coconala: 'ココナラ',
   lancers: 'ランサーズ',
+  flexy: 'FLEXY',
   other: 'その他',
+} as const
+
+export const REQUIREMENT_EVIDENCE_LABELS = {
+  supported: '根拠あり',
+  partial: '部分一致',
+  unverified: '本人確認が必要',
+  unsupported: '経験なし',
 } as const
 
 export const BUDGET_TYPES = {
@@ -73,6 +81,7 @@ export const DEFAULT_FEE_RATES: Record<string, number> = {
   crowdworks: 20,
   coconala: 22,
   lancers: 20,
+  flexy: 0,
   other: 20,
 }
 

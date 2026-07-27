@@ -3,7 +3,7 @@ import { getAiProvider } from '../../ai/provider'
 import { createErrorBody } from '../../utils/errors'
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody<{ title?: string; body?: string }>(event)
+  const body = await readBody<{ title?: string; body?: string; platform?: string }>(event)
   if (!body?.title?.trim() || !body?.body?.trim()) {
     setResponseStatus(event, 400)
     return createErrorBody({
@@ -17,7 +17,11 @@ export default defineEventHandler(async (event) => {
   }
 
   const provider = getAiProvider()
-  const result = await provider.extract({ title: body.title, body: body.body })
+  const result = await provider.extract({
+    title: body.title,
+    body: body.body,
+    platform: body.platform,
+  })
   const parsed = ExtractionResultSchema.safeParse(result)
   if (!parsed.success) {
     setResponseStatus(event, 502)

@@ -12,14 +12,16 @@ import {
 } from '../../shared/schemas/ai'
 import { decideRecommendation, buildAxes } from '../domain/recommendation'
 import { estimateEffortHeuristic } from '../domain/money'
-import type {
-  AiProvider,
-  DiagnosisInput,
-  EstimateInput,
-  ExtractionInput,
-  ProposalInput,
-  ReplyInput,
+import {
+  enrichExtractionForFlexy,
+  type AiProvider,
+  type DiagnosisInput,
+  type EstimateInput,
+  type ExtractionInput,
+  type ProposalInput,
+  type ReplyInput,
 } from './provider'
+import { buildFlexyInterestMessage } from './flexyMessage'
 
 const MODEL = 'claude-sonnet-4-20250514'
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
@@ -27,7 +29,7 @@ const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 function extractJson(text: string): unknown {
   const trimmed = text.trim()
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/)
-  const raw = fenced ? fenced[1].trim() : trimmed
+  const raw = fenced?.[1] ? fenced[1].trim() : trimmed
   const start = raw.indexOf('{')
   const end = raw.lastIndexOf('}')
   if (start < 0 || end <= start) throw new Error('JSON object not found in model response')
@@ -66,7 +68,38 @@ export class AnthropicAiProvider implements AiProvider {
   constructor(private readonly apiKey: string) {}
 
   async extract(input: ExtractionInput): Promise<ExtractionResult> {
-    const system = `あなたはフリーランス案件の募集文を構造化するアシスタントです。
+    const isFlexy = input.platform === 'flexy'
+    const system = isFlexy
+      ? `あなたはFLEXY等の継続支援案件の募集文を構造化するアシスタントです。
+必ず JSON オブジェクトのみを返してください。説明文は禁止です。
+スキーマ:
+{
+  "deliverables": [{"text": string, "provenance": "confirmed"|"inferred"|"unknown", "quote": string}],
+  "requiredSkills": [{"text": string, "provenance": "...", "quote": string}],
+  "budget": {"text": string, "provenance": "...", "quote": string},
+  "deadline": {"text": string, "provenance": "...", "quote": string},
+  "mtgConditions": {"text": string, "provenance": "...", "quote": string},
+  "maintenance": {"text": string, "provenance": "...", "quote": string},
+  "revisionTerms": {"text": string, "provenance": "...", "quote": string},
+  "selectionCriteria": {"text": string, "provenance": "...", "quote": string},
+  "unknowns": string[],
+  "companyName": {"text": string, "provenance": "...", "quote": string},
+  "role": {"text": string, "provenance": "...", "quote": string},
+  "workStyle": {"text": string, "provenance": "...", "quote": string},
+  "workLocation": {"text": string, "provenance": "...", "quote": string},
+  "workDays": {"text": string, "provenance": "...", "quote": string},
+  "requiredAvailability": {"text": string, "provenance": "...", "quote": string},
+  "recruitmentBackground": {"text": string, "provenance": "...", "quote": string},
+  "requiredRequirements": [{"text": string, "provenance": "...", "quote": string}],
+  "preferredRequirements": [{"text": string, "provenance": "...", "quote": string}]
+}
+ルール:
+- confirmed は募集文に明示がある場合のみ。quote には原文の短い抜粋を入れる。
+- 必須要件と歓迎要件は混ぜない。
+- 「LLM API・RAG・構造化出力」のような複合は原子的に分割する（別要素にする）。
+- 週N日から月間時間を推定しない。月間時間の記載がなければ unknowns に「月間稼働時間」。
+- 金額計算・推奨・BLOCK判定はしない。抽出のみ。`
+      : `あなたはフリーランス案件の募集文を構造化するアシスタントです。
 必ず JSON オブジェクトのみを返してください。説明文は禁止です。
 スキーマ:
 {
@@ -89,7 +122,7 @@ export class AnthropicAiProvider implements AiProvider {
     const text = await callAnthropic(this.apiKey, system, user)
     const parsed = ExtractionResultSchema.safeParse(extractJson(text))
     if (!parsed.success) throw new Error('Extraction schema invalid')
-    return parsed.data
+    return enrichExtractionForFlexy(parsed.data, input.title, input.body, input.platform)
   }
 
   async estimate(input: EstimateInput): Promise<EffortEstimate> {
@@ -128,9 +161,15 @@ export class AnthropicAiProvider implements AiProvider {
       extraction: input.extraction,
       profile: input.profile,
       budgetMinYen: input.budgetMinYen,
+      budgetMaxYen: input.budgetMaxYen,
       feeRatePercent: input.feeRatePercent,
       deadlineDays: input.deadlineDays,
       applicants: input.applicants,
+      engagementType: input.engagementType,
+      budgetType: input.budgetType,
+      expectedMonthlyHoursMin: input.expectedMonthlyHoursMin,
+      expectedMonthlyHoursMax: input.expectedMonthlyHoursMax,
+      requirementEvidences: input.requirementEvidences,
     })
     const axes = buildAxes({
       safety: input.safety,
@@ -138,9 +177,15 @@ export class AnthropicAiProvider implements AiProvider {
       extraction: input.extraction,
       profile: input.profile,
       budgetMinYen: input.budgetMinYen,
+      budgetMaxYen: input.budgetMaxYen,
       feeRatePercent: input.feeRatePercent,
       deadlineDays: input.deadlineDays,
       applicants: input.applicants,
+      engagementType: input.engagementType,
+      budgetType: input.budgetType,
+      expectedMonthlyHoursMin: input.expectedMonthlyHoursMin,
+      expectedMonthlyHoursMax: input.expectedMonthlyHoursMax,
+      requirementEvidences: input.requirementEvidences,
       decision,
     })
 
@@ -170,6 +215,8 @@ export class AnthropicAiProvider implements AiProvider {
       effort: input.effort,
       recommendation: decision.recommendation,
       recommendationReason: decision.reason,
+      selfCheckQuestions: decision.selfCheckQuestions,
+      consultantQuestions: decision.consultantQuestions,
       profile: {
         skills: input.profile.skills,
         achievements: input.profile.achievements,
@@ -199,12 +246,17 @@ export class AnthropicAiProvider implements AiProvider {
           missing: n.missing?.length ? n.missing : a.missing,
         }
       })
+      const mergedQuestions = [
+        ...decision.selfCheckQuestions,
+        ...decision.consultantQuestions,
+        ...(enriched.preQuestions || []),
+      ]
       const result = {
         axes: mergedAxes,
         recommendation: decision.recommendation,
         recommendationReason: decision.reason,
         clientIntent: enriched.clientIntent,
-        preQuestions: enriched.preQuestions || [],
+        preQuestions: [...new Set(mergedQuestions)].slice(0, 8),
         scopeIn: enriched.scopeIn || [],
         scopeOut: enriched.scopeOut || [],
       }
@@ -212,6 +264,11 @@ export class AnthropicAiProvider implements AiProvider {
       if (!parsed.success) throw new Error('Diagnosis schema invalid')
       return parsed.data
     } catch {
+      const preQuestions = [
+        ...decision.selfCheckQuestions,
+        ...decision.consultantQuestions,
+        ...(input.extraction.unknowns || []).map((u) => `${u}を教えてください`),
+      ]
       return {
         axes,
         recommendation: decision.recommendation,
@@ -222,7 +279,7 @@ export class AnthropicAiProvider implements AiProvider {
           concerns: '要件の食い違いや納期遅延',
           evidenceNeeded: '類似実績と進め方の具体性',
         },
-        preQuestions: (input.extraction.unknowns || []).map((u) => `${u}を教えてください`).slice(0, 5),
+        preQuestions: [...new Set(preQuestions)].slice(0, 8),
         scopeIn: input.extraction.deliverables.filter((d) => d.provenance === 'confirmed').map((d) => d.text),
         scopeOut: ['募集文にない追加機能', '無償の長期保守'],
       }
@@ -230,6 +287,58 @@ export class AnthropicAiProvider implements AiProvider {
   }
 
   async generateProposal(input: ProposalInput): Promise<ProposalResult> {
+    if (input.platform === 'flexy') {
+      try {
+        const system = `あなたはFLEXY担当者向けの応募希望メッセージライターです。
+企業への直接営業文は禁止。担当コンサルタント宛にする。
+必ず JSON オブジェクトのみを返してください。
+スキーマ:
+{
+  "strategy": string,
+  "strategyReason": string,
+  "body": string,
+  "usedAchievements": string[],
+  "preQuestions": string[],
+  "assumptions": string[],
+  "scopeIn": string[],
+  "scopeOut": string[],
+  "meetingTopics": string[],
+  "documentType": "interest_message"
+}
+制約:
+- 日本語。250〜500字目安。
+- 「FLEXYご担当者様」など担当者向け。
+- requirementEvidences で status=supported かつ evidenceNote があるものだけ経験として書いてよい。
+- unverified / partial / unsupported の経験は絶対に書かない。
+- 「必ず」「絶対」等の保証禁止。URLは入力にある場合のみ。捏造禁止。
+- documentType は必ず interest_message。`
+
+        const user = JSON.stringify({
+          title: input.title,
+          jobUrl: input.jobUrl || null,
+          diagnosis: input.diagnosis,
+          extraction: {
+            role: input.extraction.role,
+            workDays: input.extraction.workDays,
+            requiredAvailability: input.extraction.requiredAvailability,
+          },
+          requirementEvidences: (input.requirementEvidences || []).filter((e) => e.status === 'supported'),
+          consultantQuestions: input.consultantQuestions || input.diagnosis.preQuestions,
+          profile: {
+            name: input.profile.name,
+            availableTimes: input.profile.availableTimes,
+            weeklyHours: input.profile.weeklyHours,
+          },
+        })
+        const text = await callAnthropic(this.apiKey, system, user)
+        const parsed = ProposalResultSchema.safeParse(extractJson(text))
+        if (!parsed.success) throw new Error('Proposal schema invalid')
+        return { ...parsed.data, documentType: 'interest_message' }
+      } catch {
+        return buildFlexyInterestMessage(input)
+      }
+    }
+
     const system = `あなたはクラウドソーシング向けの提案文ライターです。
 必ず JSON オブジェクトのみを返してください。
 スキーマ:
@@ -242,13 +351,15 @@ export class AnthropicAiProvider implements AiProvider {
   "assumptions": string[],
   "scopeIn": string[],
   "scopeOut": string[],
-  "meetingTopics": string[]
+  "meetingTopics": string[],
+  "documentType": "proposal"
 }
 制約:
 - 日本語。営業っぽい誇張・虚偽実績禁止。
 - プロフィールにない実績を捏造しない。
 - 400〜800字程度。丁寧だが簡潔。
-- forceStrategy があればその型を使う。`
+- forceStrategy があればその型を使う。
+- documentType は proposal。`
 
     const user = JSON.stringify({
       title: input.title,
@@ -267,9 +378,14 @@ export class AnthropicAiProvider implements AiProvider {
     const parsed = ProposalResultSchema.safeParse(extractJson(text))
     if (!parsed.success) throw new Error('Proposal schema invalid')
     if (input.forceStrategy) {
-      return { ...parsed.data, strategy: input.forceStrategy, strategyReason: `ユーザー指定の「${input.forceStrategy}」で再生成しました` }
+      return {
+        ...parsed.data,
+        strategy: input.forceStrategy,
+        strategyReason: `ユーザー指定の「${input.forceStrategy}」で再生成しました`,
+        documentType: 'proposal',
+      }
     }
-    return parsed.data
+    return { ...parsed.data, documentType: 'proposal' }
   }
 
   async assistReply(input: ReplyInput): Promise<ReplyAssistResult> {

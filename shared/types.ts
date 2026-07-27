@@ -1,5 +1,6 @@
-export type Platform = 'crowdworks' | 'coconala' | 'lancers' | 'other'
+export type Platform = 'crowdworks' | 'coconala' | 'lancers' | 'flexy' | 'other'
 export type BudgetType = 'fixed' | 'hourly' | 'monthly' | 'performance' | 'unknown'
+export type EngagementType = 'project' | 'ongoing' | 'unknown'
 export type StatusCode =
   | 'draft'
   | 'extracted'
@@ -21,6 +22,19 @@ export type StatusCode =
 export type SkillLevel = '実務' | '個人開発' | '学習中'
 export type Recommendation = 'apply' | 'question' | 'skip'
 export type AxisRating = 'good' | 'attention' | 'check' | 'unknown'
+
+export type RequirementEvidenceStatus =
+  | 'supported'
+  | 'partial'
+  | 'unverified'
+  | 'unsupported'
+
+export interface RequirementEvidence {
+  requirement: string
+  status: RequirementEvidenceStatus
+  evidenceNote: string
+  sourceQuote: string
+}
 
 export interface ProfileSkill {
   id?: string
@@ -83,6 +97,14 @@ export interface JobInput {
   clientCompletionRate: string
   clientVerified: boolean
   clientCertified: boolean
+  /** project=単発 / ongoing=継続 / unknown */
+  engagementType?: EngagementType
+  /** 想定月間稼働時間（下限）。空欄は不明のまま補完しない */
+  expectedMonthlyHoursMin?: string
+  /** 想定月間稼働時間（上限） */
+  expectedMonthlyHoursMax?: string
+  /** 案件単位の手数料率（%）。空欄時はプラットフォーム初期値→プロフィール */
+  feeRatePercent?: string
 }
 
 export type { Opportunity as PipelineItem, Opportunity, PipelineEvent, WorkLog, FinancialResult, ClientSnapshot } from './opportunity'
@@ -134,6 +156,7 @@ export const INIT_JOB_INPUT: JobInput = {
   platform: 'crowdworks',
   title: '',
   body: '',
+  url: '',
   budgetType: 'fixed',
   budgetMin: '',
   budgetMax: '',
@@ -145,4 +168,80 @@ export const INIT_JOB_INPUT: JobInput = {
   clientCompletionRate: '',
   clientVerified: false,
   clientCertified: false,
+  engagementType: 'project',
+  expectedMonthlyHoursMin: '',
+  expectedMonthlyHoursMax: '',
+  feeRatePercent: '',
+}
+
+const VALID_PLATFORMS = new Set<Platform>(['crowdworks', 'coconala', 'lancers', 'flexy', 'other'])
+const VALID_ENGAGEMENT = new Set<EngagementType>(['project', 'ongoing', 'unknown'])
+const VALID_BUDGET = new Set<BudgetType>(['fixed', 'hourly', 'monthly', 'performance', 'unknown'])
+
+/** 旧 localStorage / D1 プロフィールを後方互換で正規化 */
+export function normalizeProfile(raw: Partial<UserProfile> | null | undefined): UserProfile {
+  const base = { ...INIT_PROFILE }
+  if (!raw || typeof raw !== 'object') return base
+  const platform = VALID_PLATFORMS.has(raw.platform as Platform)
+    ? (raw.platform as Platform)
+    : base.platform
+  return {
+    ...base,
+    ...raw,
+    platform,
+    name: typeof raw.name === 'string' ? raw.name : base.name,
+    bio: typeof raw.bio === 'string' ? raw.bio : base.bio,
+    weeklyHours: Number.isFinite(Number(raw.weeklyHours)) ? Number(raw.weeklyHours) : base.weeklyHours,
+    minHourlyYen: Number.isFinite(Number(raw.minHourlyYen)) ? Number(raw.minHourlyYen) : base.minHourlyYen,
+    minContractYen: Number.isFinite(Number(raw.minContractYen)) ? Number(raw.minContractYen) : base.minContractYen,
+    availableTimes: typeof raw.availableTimes === 'string' ? raw.availableTimes : base.availableTimes,
+    mtgLimit: typeof raw.mtgLimit === 'string' ? raw.mtgLimit : base.mtgLimit,
+    capacity: typeof raw.capacity === 'string' ? raw.capacity : base.capacity,
+    skills: Array.isArray(raw.skills) ? raw.skills : [],
+    achievements: Array.isArray(raw.achievements) ? raw.achievements : [],
+    ngConditions: Array.isArray(raw.ngConditions) ? raw.ngConditions : base.ngConditions,
+    feeRate: Number.isFinite(Number(raw.feeRate)) ? Number(raw.feeRate) : base.feeRate,
+  }
+}
+
+/** 旧 JobInput / 下書きを後方互換で正規化 */
+export function normalizeJobInput(raw: Partial<JobInput> | null | undefined): JobInput {
+  const base = { ...INIT_JOB_INPUT }
+  if (!raw || typeof raw !== 'object') return base
+  const platform = VALID_PLATFORMS.has(raw.platform as Platform)
+    ? (raw.platform as Platform)
+    : base.platform
+  const budgetType = VALID_BUDGET.has(raw.budgetType as BudgetType)
+    ? (raw.budgetType as BudgetType)
+    : base.budgetType
+  const engagementType = VALID_ENGAGEMENT.has(raw.engagementType as EngagementType)
+    ? (raw.engagementType as EngagementType)
+    : platform === 'flexy'
+      ? 'ongoing'
+      : base.engagementType
+  return {
+    ...base,
+    ...raw,
+    platform,
+    budgetType,
+    engagementType,
+    title: typeof raw.title === 'string' ? raw.title : '',
+    body: typeof raw.body === 'string' ? raw.body : '',
+    url: typeof raw.url === 'string' ? raw.url : '',
+    budgetMin: raw.budgetMin != null ? String(raw.budgetMin) : '',
+    budgetMax: raw.budgetMax != null ? String(raw.budgetMax) : '',
+    deadline: typeof raw.deadline === 'string' ? raw.deadline : '',
+    applicants: raw.applicants != null ? String(raw.applicants) : '',
+    clientRating: typeof raw.clientRating === 'string' ? raw.clientRating : '',
+    clientReviews: raw.clientReviews != null ? String(raw.clientReviews) : '',
+    clientOrders: raw.clientOrders != null ? String(raw.clientOrders) : '',
+    clientCompletionRate: typeof raw.clientCompletionRate === 'string' ? raw.clientCompletionRate : '',
+    clientVerified: Boolean(raw.clientVerified),
+    clientCertified: Boolean(raw.clientCertified),
+    expectedMonthlyHoursMin:
+      raw.expectedMonthlyHoursMin != null ? String(raw.expectedMonthlyHoursMin) : '',
+    expectedMonthlyHoursMax:
+      raw.expectedMonthlyHoursMax != null ? String(raw.expectedMonthlyHoursMax) : '',
+    feeRatePercent: raw.feeRatePercent != null ? String(raw.feeRatePercent) : '',
+  }
 }

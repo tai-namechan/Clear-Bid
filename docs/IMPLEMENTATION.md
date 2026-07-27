@@ -31,7 +31,16 @@ Based on Clear Bid MVP Spec v1.0.
 - Cloudflare Access JWT 検証（未設定時は AUTH_BYPASS / 開発ユーザー）
 - `/api/me` `/api/health`、デプロイ手順は `docs/DEPLOY.md`
 
+### FLEXY support
+- Platform `flexy`（表示名 FLEXY、手数料初期値 0%、案件単位で上書き可）
+- 月額・稼働日数の決定的パーサ（週N日→月間時間の勝手換算なし）
+- 必須要件エビデンス確認（supported/partial/unverified/unsupported）
+- 継続案件向け完遂・採算判定（domain 層）
+- `interest_message`（FLEXY担当者向け応募希望メッセージ）
+- 旧プロフィール / JobInput の `normalizeProfile` / `normalizeJobInput`
+
 ## Notes
 - Money / recommendation / BLOCK の最終確定は AI に委譲しない
 - Workers AI は未配線（Anthropic を本番パスとする）
 - 正規化テーブル（opportunities 等）はスキーマ上あり。現行ランタイムは documents 同期
+- パイプライン詳細の手数料表示はプロフィール基準のまま（案件別手数料の詳細 UI は後続）

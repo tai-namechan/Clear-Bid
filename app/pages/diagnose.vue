@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ulid } from 'ulid'
-import { INIT_JOB_INPUT, type JobInput, normalizeOpportunity } from '#shared/types'
+import {
+  INIT_JOB_INPUT,
+  normalizeJobInput,
+  type JobInput,
+  type RequirementEvidence,
+  normalizeOpportunity,
+} from '#shared/types'
 import type {
   DiagnosisResult,
   EffortEstimate,
@@ -9,6 +15,12 @@ import type {
   SafetyFinding,
 } from '#shared/schemas/ai'
 import { STORAGE_KEYS } from '#shared/constants'
+import {
+  hasBlockingEvidenceGaps,
+  initRequirementEvidences,
+  parseFlexyBudget,
+  resolveJobFeeRate,
+} from '#shared/domain/flexy'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,13 +30,36 @@ const step = ref(0)
 const loading = ref(false)
 const loadMsg = ref('')
 const regenerating = ref(false)
-const inp = ref<JobInput>({ ...INIT_JOB_INPUT })
+const inp = ref<JobInput>(normalizeJobInput({ ...INIT_JOB_INPUT }))
 const ext = ref<ExtractionResult | null>(null)
 const safety = ref<SafetyFinding[]>([])
 const effort = ref<EffortEstimate | null>(null)
 const diag = ref<DiagnosisResult | null>(null)
 const proposal = ref<ProposalResult | null>(null)
 const copied = ref(false)
+const evidences = ref<RequirementEvidence[]>([])
+
+const isFlexy = computed(() => inp.value.platform === 'flexy')
+const canGenerateProposal = computed(() => {
+  if (!isFlexy.value) return true
+  if (!evidences.value.length) return true
+  if (hasBlockingEvidenceGaps(evidences.value)) return false
+  return evidences.value.every((e) => e.status !== 'supported' || e.evidenceNote.trim())
+})
+
+function applyParsedBudget(body: string, title: string) {
+  if (inp.value.platform !== 'flexy') return
+  const parsed = parseFlexyBudget(`${title}\n${body}`)
+  if (parsed.budgetType === 'monthly') {
+    inp.value = {
+      ...inp.value,
+      budgetType: 'monthly',
+      engagementType: 'ongoing',
+      budgetMin: parsed.budgetMinYen != null ? String(parsed.budgetMinYen) : inp.value.budgetMin,
+      budgetMax: parsed.budgetMaxYen != null ? String(parsed.budgetMaxYen) : inp.value.budgetMax,
+    }
+  }
+}
 
 function reset() {
   step.value = 0
@@ -34,7 +69,11 @@ function reset() {
   diag.value = null
   proposal.value = null
   copied.value = false
-  inp.value = { ...INIT_JOB_INPUT, platform: profile.value.platform || 'crowdworks' }
+  evidences.value = []
+  inp.value = normalizeJobInput({
+    ...INIT_JOB_INPUT,
+    platform: profile.value.platform || 'crowdworks',
+  })
   if (import.meta.client) localStorage.removeItem(STORAGE_KEYS.DRAFT_INPUT)
 }
 
@@ -47,7 +86,7 @@ onMounted(() => {
   if (import.meta.client) {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.DRAFT_INPUT)
-      if (raw) inp.value = { ...INIT_JOB_INPUT, ...JSON.parse(raw) }
+      if (raw) inp.value = normalizeJobInput({ ...INIT_JOB_INPUT, ...JSON.parse(raw) })
     } catch { /* ignore */ }
   }
 })
@@ -75,9 +114,22 @@ async function doExtract() {
   try {
     const r = await $fetch<ExtractionResult>('/api/ai/extract', {
       method: 'POST',
-      body: { title: inp.value.title, body: inp.value.body },
+      body: {
+        title: inp.value.title,
+        body: inp.value.body,
+        platform: inp.value.platform,
+      },
     })
     ext.value = r
+    applyParsedBudget(inp.value.body, inp.value.title)
+    if (isFlexy.value) {
+      const reqs = r.requiredRequirements?.length
+        ? r.requiredRequirements
+        : r.requiredSkills || []
+      evidences.value = initRequirementEvidences(reqs, profile.value)
+    } else {
+      evidences.value = []
+    }
     step.value = 1
     await trackAiSuccess('extract')
   } catch (e) {
@@ -138,9 +190,22 @@ async function doDiag() {
       ...ext.value,
       deliverables: (ext.value.deliverables || []).filter((d) => d.provenance === 'confirmed'),
       requiredSkills: (ext.value.requiredSkills || []).filter((d) => d.provenance === 'confirmed'),
+      requiredRequirements: (ext.value.requiredRequirements || []).filter((d) => d.provenance === 'confirmed'),
+      preferredRequirements: (ext.value.preferredRequirements || []).filter((d) => d.provenance === 'confirmed'),
       budget: ext.value.budget?.provenance === 'confirmed' ? ext.value.budget : { text: '不明', provenance: 'unknown' as const, quote: '' },
       deadline: ext.value.deadline?.provenance === 'confirmed' ? ext.value.deadline : { text: '不明', provenance: 'unknown' as const, quote: '' },
+      role: ext.value.role?.provenance === 'confirmed' ? ext.value.role : ext.value.role,
+      workDays: ext.value.workDays?.provenance === 'confirmed' ? ext.value.workDays : ext.value.workDays,
+      workStyle: ext.value.workStyle?.provenance === 'confirmed' ? ext.value.workStyle : ext.value.workStyle,
+      requiredAvailability: ext.value.requiredAvailability?.provenance === 'confirmed'
+        ? ext.value.requiredAvailability
+        : ext.value.requiredAvailability,
     }
+    const feeRatePercent = resolveJobFeeRate({
+      platform: inp.value.platform,
+      jobFeeRatePercent: inp.value.feeRatePercent,
+      profileFeeRate: profile.value.feeRate,
+    })
     const r = await $fetch<DiagnosisResult>('/api/ai/diagnose', {
       method: 'POST',
       body: {
@@ -151,8 +216,14 @@ async function doDiag() {
         effort: effort.value,
         profile: profile.value,
         budgetMinYen: inp.value.budgetMin ? Number(inp.value.budgetMin) : null,
-        feeRatePercent: profile.value.feeRate || 20,
+        budgetMaxYen: inp.value.budgetMax ? Number(inp.value.budgetMax) : null,
+        feeRatePercent,
         applicants: inp.value.applicants ? Number(inp.value.applicants) : null,
+        engagementType: inp.value.engagementType,
+        budgetType: inp.value.budgetType,
+        expectedMonthlyHoursMin: inp.value.expectedMonthlyHoursMin,
+        expectedMonthlyHoursMax: inp.value.expectedMonthlyHoursMax,
+        requirementEvidences: evidences.value,
       },
     })
     diag.value = r
@@ -170,6 +241,10 @@ async function doDiag() {
 
 async function doProposal(forceStrategy?: string) {
   if (!diag.value || !ext.value) return
+  if (!canGenerateProposal.value) {
+    alert('必須要件の経験有無を確認すると、実績を誇張せず応募文を作れます。')
+    return
+  }
   try {
     assertAiBudget('proposal')
   } catch (e) {
@@ -179,7 +254,7 @@ async function doProposal(forceStrategy?: string) {
   if (forceStrategy) regenerating.value = true
   else {
     loading.value = true
-    loadMsg.value = '提案文を作成しています...'
+    loadMsg.value = isFlexy.value ? '応募希望メッセージを作成しています...' : '提案文を作成しています...'
   }
   try {
     const r = await $fetch<ProposalResult>('/api/ai/proposal', {
@@ -190,6 +265,12 @@ async function doProposal(forceStrategy?: string) {
         extraction: ext.value,
         profile: profile.value,
         forceStrategy,
+        platform: inp.value.platform,
+        jobUrl: inp.value.url,
+        requirementEvidences: evidences.value,
+        consultantQuestions: (diag.value.preQuestions || []).filter(
+          (q) => !/経験|根拠|本人|必須要件/.test(q),
+        ),
       },
     })
     proposal.value = r
@@ -198,7 +279,7 @@ async function doProposal(forceStrategy?: string) {
   } catch (e) {
     console.error(e)
     await trackAiFailure('proposal')
-    alert('提案文の生成に失敗しました。')
+    alert(isFlexy.value ? '応募希望メッセージの生成に失敗しました。' : '提案文の生成に失敗しました。')
   } finally {
     loading.value = false
     regenerating.value = false
@@ -243,6 +324,7 @@ function buildOpportunityBase(status: 'applied' | 'skipped', reason?: string) {
     date,
     updatedAt: date,
     body: inp.value.body,
+    url: inp.value.url,
     budgetType: inp.value.budgetType,
     budgetMin: inp.value.budgetMin,
     budgetMax: inp.value.budgetMax,
@@ -305,7 +387,10 @@ async function doSkip(reason: string) {
   <DiagnoseStepExtract
     v-else-if="step === 1"
     :ext="ext"
+    :evidences="evidences"
+    :is-flexy="isFlexy"
     @update:ext="ext = $event"
+    @update:evidences="evidences = $event"
     @next="doSafety"
     @back="step = 0"
   />
@@ -322,6 +407,11 @@ async function doSkip(reason: string) {
   <DiagnoseStepResult
     v-else-if="step === 3"
     :diag="diag"
+    :is-flexy="isFlexy"
+    :extraction="ext"
+    :job="inp"
+    :evidences="evidences"
+    :can-generate="canGenerateProposal"
     @gen="doProposal"
     @skip="doSkip('診断結果')"
     @back="step = 2"
@@ -331,6 +421,7 @@ async function doSkip(reason: string) {
     :proposal="proposal"
     :copied="copied"
     :regenerating="regenerating"
+    :is-flexy="isFlexy"
     @copy="doCopy"
     @apply="doApply"
     @regenerate="doProposal"

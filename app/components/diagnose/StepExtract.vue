@@ -1,22 +1,37 @@
 <script setup lang="ts">
+import { REQUIREMENT_EVIDENCE_LABELS } from '#shared/constants'
 import type { ExtractionResult } from '#shared/schemas/ai'
+import type { RequirementEvidence, RequirementEvidenceStatus } from '#shared/types'
 
 type Item = { text: string; provenance: 'confirmed' | 'inferred' | 'unknown'; quote?: string }
 
 const props = defineProps<{
   ext: ExtractionResult | null
+  evidences?: RequirementEvidence[]
+  isFlexy?: boolean
 }>()
 const emit = defineEmits<{
   'update:ext': [ExtractionResult]
+  'update:evidences': [RequirementEvidence[]]
   next: []
   back: []
 }>()
 
 const local = ref<ExtractionResult | null>(null)
+const localEvidences = ref<RequirementEvidence[]>([])
+
 watch(
   () => props.ext,
   (v) => {
     local.value = v ? JSON.parse(JSON.stringify(v)) : null
+  },
+  { immediate: true },
+)
+
+watch(
+  () => props.evidences,
+  (v) => {
+    localEvidences.value = v ? JSON.parse(JSON.stringify(v)) : []
   },
   { immediate: true },
 )
@@ -41,25 +56,76 @@ function sync() {
   if (local.value) emit('update:ext', JSON.parse(JSON.stringify(local.value)))
 }
 
+function syncEvidences() {
+  emit('update:evidences', JSON.parse(JSON.stringify(localEvidences.value)))
+}
+
+function updateEvidence(i: number, patch: Partial<RequirementEvidence>) {
+  const cur = localEvidences.value[i]
+  if (!cur) return
+  const next = [...localEvidences.value]
+  next[i] = {
+    requirement: patch.requirement ?? cur.requirement,
+    status: patch.status ?? cur.status,
+    evidenceNote: patch.evidenceNote ?? cur.evidenceNote,
+    sourceQuote: patch.sourceQuote ?? cur.sourceQuote,
+  }
+  localEvidences.value = next
+  syncEvidences()
+}
+
+const evidenceOk = computed(() => {
+  if (!props.isFlexy || localEvidences.value.length === 0) return true
+  return localEvidences.value.every((e) => {
+    if (e.status === 'unverified' || e.status === 'partial') return false
+    if (e.status === 'supported' && !e.evidenceNote.trim()) return false
+    return true
+  })
+})
+
 const arraySections = computed(() => {
   if (!local.value) return []
-  return [
+  const sections: Array<[string, Item[]]> = [
     ['成果物', local.value.deliverables],
     ['必須スキル', local.value.requiredSkills],
-  ] as const
+  ]
+  if (props.isFlexy) {
+    if (local.value.requiredRequirements?.length) {
+      sections.push(['必須要件', local.value.requiredRequirements])
+    }
+    if (local.value.preferredRequirements?.length) {
+      sections.push(['歓迎要件', local.value.preferredRequirements])
+    }
+  }
+  return sections
 })
 
 const scalarSections = computed(() => {
   if (!local.value) return []
-  return [
+  const base: Array<[string, keyof ExtractionResult]> = [
     ['予算', 'budget'],
     ['納期', 'deadline'],
     ['MTG・連絡', 'mtgConditions'],
     ['保守・運用', 'maintenance'],
     ['修正条件', 'revisionTerms'],
     ['選定基準', 'selectionCriteria'],
-  ] as const
+  ]
+  if (props.isFlexy) {
+    return [
+      ['会社名', 'companyName'],
+      ['職種・役割', 'role'],
+      ['リモート／勤務形態', 'workStyle'],
+      ['勤務地', 'workLocation'],
+      ['稼働日数', 'workDays'],
+      ['対応時間帯', 'requiredAvailability'],
+      ['募集背景', 'recruitmentBackground'],
+      ...base,
+    ] as Array<[string, keyof ExtractionResult]>
+  }
+  return base
 })
+
+const statuses = Object.keys(REQUIREMENT_EVIDENCE_LABELS) as RequirementEvidenceStatus[]
 </script>
 
 <template>
@@ -97,26 +163,55 @@ const scalarSections = computed(() => {
 
       <div v-for="[label, key] in scalarSections" :key="key" class="cb-card mb-1.5">
         <p class="mb-1 text-[11px] font-semibold text-slate-500">{{ label }}</p>
-        <template v-if="local[key]">
+        <template v-if="local[key] && typeof local[key] === 'object' && 'text' in (local[key] as object)">
           <div class="mb-1 flex items-center gap-1">
             <span
               class="rounded-md px-1.5 py-px text-[9px] font-bold"
-              :style="{ background: badge(local[key]!.provenance).b, color: badge(local[key]!.provenance).c }"
-            >{{ badge(local[key]!.provenance).l }}</span>
+              :style="{ background: badge((local[key] as Item).provenance).b, color: badge((local[key] as Item).provenance).c }"
+            >{{ badge((local[key] as Item).provenance).l }}</span>
             <button
-              v-if="local[key]!.provenance !== 'confirmed'"
+              v-if="(local[key] as Item).provenance !== 'confirmed'"
               class="text-[10px] font-semibold text-blue-500"
-              @click="confirmItem(local[key]!)"
+              @click="confirmItem(local[key] as Item)"
             >
               確定にする
             </button>
           </div>
           <input
             class="cb-input mb-0"
-            :value="local[key]!.text"
-            @input="updateText(local[key]!, ($event.target as HTMLInputElement).value)"
+            :value="(local[key] as Item).text"
+            @input="updateText(local[key] as Item, ($event.target as HTMLInputElement).value)"
           >
         </template>
+      </div>
+
+      <div v-if="isFlexy && localEvidences.length" class="cb-card mb-2 border border-amber-200">
+        <p class="mb-1 text-[11px] font-semibold text-amber-700">必須要件の経験確認</p>
+        <p class="mb-2 text-[11px] leading-relaxed text-slate-500">
+          必須要件の経験有無を確認すると、実績を誇張せず応募文を作れます。「根拠あり」を選ぶ場合は根拠メモが必須です。
+        </p>
+        <div v-for="(ev, i) in localEvidences" :key="i" class="mb-3 border-t border-slate-100 pt-2">
+          <p class="m-0 text-xs font-semibold text-slate-800">{{ ev.requirement }}</p>
+          <p v-if="ev.sourceQuote" class="m-0 mt-1 text-[11px] italic text-slate-400">「{{ ev.sourceQuote }}」</p>
+          <label class="cb-label">対応状態</label>
+          <select
+            class="cb-input"
+            :value="ev.status"
+            @change="updateEvidence(i, { status: ($event.target as HTMLSelectElement).value as RequirementEvidenceStatus })"
+          >
+            <option v-for="s in statuses" :key="s" :value="s">{{ REQUIREMENT_EVIDENCE_LABELS[s] }}</option>
+          </select>
+          <label class="cb-label">根拠メモ</label>
+          <input
+            class="cb-input mb-0"
+            :value="ev.evidenceNote"
+            placeholder="supported の場合は必須"
+            @input="updateEvidence(i, { evidenceNote: ($event.target as HTMLInputElement).value })"
+          >
+        </div>
+        <p v-if="!evidenceOk" class="m-0 text-[11px] text-amber-600">
+          必須要件の経験有無を確認すると、実績を誇張せず応募文を作れます。
+        </p>
       </div>
 
       <div v-if="local.unknowns?.length" class="cb-card mb-1.5 border-l-[3px] border-l-amber-500">

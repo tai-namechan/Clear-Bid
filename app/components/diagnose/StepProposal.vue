@@ -3,10 +3,11 @@ import { Icons } from '~/utils/icons'
 import { PROPOSAL_STRATEGIES } from '#shared/schemas/ai'
 import type { ProposalResult } from '#shared/schemas/ai'
 
-defineProps<{
+const props = defineProps<{
   proposal: ProposalResult | null
   copied: boolean
   regenerating?: boolean
+  isFlexy?: boolean
 }>()
 const emit = defineEmits<{
   copy: []
@@ -17,12 +18,15 @@ const emit = defineEmits<{
 
 const showApplyConfirm = ref(false)
 const regenStrategy = ref<string>('')
+const isInterest = computed(
+  () => props.isFlexy || props.proposal?.documentType === 'interest_message',
+)
 </script>
 
 <template>
   <div class="cb-page">
     <button class="cb-back" @click="$emit('back')">← 診断結果に戻る</button>
-    <h1 class="cb-h1">提案文</h1>
+    <h1 class="cb-h1">{{ isInterest ? '応募希望メッセージ' : '提案文' }}</h1>
 
     <template v-if="!proposal">
       <p>生成に失敗しました。</p>
@@ -46,8 +50,8 @@ const regenStrategy = ref<string>('')
       <div
         v-for="(block, i) in [
           [proposal.assumptions, '見積り前提', '#64748b'],
-          [proposal.preQuestions, '応募前の確認質問', '#7c3aed'],
-          [proposal.meetingTopics, '面談で聞くべきこと', '#0369a1'],
+          [proposal.preQuestions, isInterest ? '担当者への確認事項' : '応募前の確認質問', '#7c3aed'],
+          [proposal.meetingTopics, isInterest ? '面談準備' : '面談で聞くべきこと', '#0369a1'],
         ] as const"
         :key="i"
       >
@@ -61,7 +65,7 @@ const regenStrategy = ref<string>('')
         </div>
       </div>
 
-      <div class="cb-card mb-2">
+      <div v-if="!isInterest" class="cb-card mb-2">
         <p class="mb-2 text-[11px] font-semibold text-slate-500">別の型で再生成（利用枠を消費）</p>
         <select v-model="regenStrategy" class="cb-input">
           <option value="">型を選択...</option>
@@ -80,7 +84,7 @@ const regenStrategy = ref<string>('')
 
       <button class="cb-cta bg-green-600" @click="$emit('copy')">
         <CbIcon :d="Icons.copy" :size="16" color="#fff" />
-        {{ copied ? 'コピーしました' : '提案文をコピー' }}
+        {{ copied ? 'コピーしました' : (isInterest ? '応募希望メッセージをコピー' : '提案文をコピー') }}
       </button>
       <button class="cb-outline-btn" @click="showApplyConfirm = true">応募済みとして記録する</button>
       <p class="mt-2 text-center text-[11px] text-slate-400">コピーだけでは応募済みになりません</p>
@@ -89,7 +93,9 @@ const regenStrategy = ref<string>('')
         <div class="w-full max-w-[400px] rounded-2xl bg-white p-5">
           <p class="m-0 text-[15px] font-bold text-slate-900">実際に応募しましたか？</p>
           <p class="mt-2 text-[13px] leading-relaxed text-slate-500">
-            プラットフォームへ提案を送信した場合のみ「応募済み」にしてください。コピーしただけではまだ応募していません。
+            {{ isInterest
+              ? 'FLEXY担当者へ応募希望を送った場合のみ「応募済み」にしてください。コピーしただけではまだ応募していません。'
+              : 'プラットフォームへ提案を送信した場合のみ「応募済み」にしてください。コピーしただけではまだ応募していません。' }}
           </p>
           <button class="cb-cta" @click="showApplyConfirm = false; emit('apply')">はい、応募済みにする</button>
           <button class="cb-outline-btn" @click="showApplyConfirm = false">まだ応募していない</button>

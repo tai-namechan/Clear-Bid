@@ -10,6 +10,10 @@ export default defineEventHandler(async (event) => {
     extraction?: unknown
     profile?: UserProfile
     forceStrategy?: string
+    platform?: string
+    jobUrl?: string
+    requirementEvidences?: import('../../../shared/types').RequirementEvidence[]
+    consultantQuestions?: string[]
   }>(event)
 
   if (!body?.title || !body?.profile) {
@@ -36,6 +40,10 @@ export default defineEventHandler(async (event) => {
     extraction: extraction.data,
     profile: body.profile,
     forceStrategy: body.forceStrategy,
+    platform: body.platform,
+    jobUrl: body.jobUrl,
+    requirementEvidences: body.requirementEvidences,
+    consultantQuestions: body.consultantQuestions,
   })
   const parsed = ProposalResultSchema.safeParse(result)
   if (!parsed.success) {

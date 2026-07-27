@@ -5,14 +5,20 @@ import type {
   ProposalResult,
   SafetyFinding,
 } from '../../shared/schemas/ai'
-import type { UserProfile } from '../../shared/types'
+import type { EngagementType, Platform, RequirementEvidence, UserProfile } from '../../shared/types'
+import {
+  extractFlexyHeuristics,
+  parseFlexyBudget,
+} from '../../shared/domain/flexy'
 import { estimateEffortHeuristic } from '../domain/money'
 import { buildAxes, decideRecommendation } from '../domain/recommendation'
 import { AnthropicAiProvider } from './anthropic'
+import { buildFlexyInterestMessage } from './flexyMessage'
 
 export interface ExtractionInput {
   title: string
   body: string
+  platform?: Platform | string
 }
 
 export interface EstimateInput {
@@ -31,9 +37,15 @@ export interface DiagnosisInput {
   effort: EffortEstimate
   profile: UserProfile
   budgetMinYen: number | null
+  budgetMaxYen?: number | null
   feeRatePercent: number
   deadlineDays?: number | null
   applicants?: number | null
+  engagementType?: EngagementType
+  budgetType?: string
+  expectedMonthlyHoursMin?: string | null
+  expectedMonthlyHoursMax?: string | null
+  requirementEvidences?: RequirementEvidence[]
 }
 
 export interface ProposalInput {
@@ -42,6 +54,10 @@ export interface ProposalInput {
   extraction: ExtractionResult
   profile: UserProfile
   forceStrategy?: string
+  platform?: Platform | string
+  jobUrl?: string
+  requirementEvidences?: RequirementEvidence[]
+  consultantQuestions?: string[]
 }
 
 export interface ReplyInput {
@@ -58,7 +74,51 @@ export interface AiProvider {
   assistReply(input: ReplyInput): Promise<import('../../shared/schemas/ai').ReplyAssistResult>
 }
 
-function extractByHeuristics(title: string, body: string): ExtractionResult {
+function looksLikeFlexy(platform?: string, body = '', title = ''): boolean {
+  if (platform === 'flexy') return true
+  return /FLEXY|フレキシ|週\d日.*報酬|報酬：\s*〜?\d+万/.test(`${title}\n${body}`)
+}
+
+function extractByHeuristics(title: string, body: string, platform?: string): ExtractionResult {
+  if (looksLikeFlexy(platform, body, title)) {
+    const flexy = extractFlexyHeuristics(title, body)
+    const budgetParsed = parseFlexyBudget(`${title}\n${body}`)
+    return {
+      deliverables: flexy.role
+        ? [{ text: flexy.role.text, provenance: 'confirmed', quote: flexy.role.quote || '' }]
+        : [],
+      requiredSkills: flexy.requiredSkills || [],
+      budget: flexy.budget,
+      deadline: { text: '継続想定（納期なし）', provenance: 'inferred', quote: '' },
+      mtgConditions: flexy.requiredAvailability || {
+        text: '不明',
+        provenance: 'unknown',
+        quote: '',
+      },
+      maintenance: { text: '継続支援', provenance: 'inferred', quote: '' },
+      revisionTerms: { text: '不明', provenance: 'unknown', quote: '' },
+      selectionCriteria: {
+        text: '必須要件・歓迎要件参照',
+        provenance: 'inferred',
+        quote: '',
+      },
+      unknowns: flexy.unknowns || [],
+      companyName: flexy.companyName,
+      role: flexy.role,
+      workStyle: flexy.workStyle,
+      workLocation: flexy.workLocation,
+      workDays: flexy.workDays,
+      requiredAvailability: flexy.requiredAvailability,
+      recruitmentBackground: flexy.recruitmentBackground,
+      requiredRequirements: flexy.requiredRequirements || [],
+      preferredRequirements: flexy.preferredRequirements || [],
+      // budgetType hint via text for UI merge
+      ...(budgetParsed.budgetType === 'monthly'
+        ? {}
+        : {}),
+    }
+  }
+
   const lines = body.split(/\n+/).map((l) => l.trim()).filter(Boolean)
   const deliverables: ExtractionResult['deliverables'] = []
   const skills: ExtractionResult['requiredSkills'] = []
@@ -67,7 +127,6 @@ function extractByHeuristics(title: string, body: string): ExtractionResult {
   const skillHints = ['Laravel', 'Vue', 'React', 'TypeScript', 'PHP', 'Python', 'Next.js', 'Nuxt', 'SQL', 'AWS', 'Docker']
   for (const hint of skillHints) {
     if (body.includes(hint) || title.includes(hint)) {
-      const idx = (body + title).indexOf(hint)
       const src = body.includes(hint) ? body : title
       const start = Math.max(0, src.indexOf(hint) - 4)
       skills.push({
@@ -121,10 +180,54 @@ function extractByHeuristics(title: string, body: string): ExtractionResult {
       ? { text: '選定に関する記載あり', provenance: 'inferred', quote: '' }
       : { text: '不明', provenance: 'unknown', quote: '' },
     unknowns,
+    requiredRequirements: [],
+    preferredRequirements: [],
+  }
+}
+
+/** Merge rule-based FLEXY fields onto AI extraction when platform is flexy. */
+export function enrichExtractionForFlexy(
+  result: ExtractionResult,
+  title: string,
+  body: string,
+  platform?: string,
+): ExtractionResult {
+  if (!looksLikeFlexy(platform, body, title)) return result
+  const flexy = extractFlexyHeuristics(title, body)
+  return {
+    ...result,
+    companyName: result.companyName?.text ? result.companyName : flexy.companyName,
+    role: result.role?.text ? result.role : flexy.role,
+    workStyle: result.workStyle?.text ? result.workStyle : flexy.workStyle,
+    workLocation: result.workLocation?.text ? result.workLocation : flexy.workLocation,
+    workDays: result.workDays?.text ? result.workDays : flexy.workDays,
+    requiredAvailability: result.requiredAvailability?.text
+      ? result.requiredAvailability
+      : flexy.requiredAvailability,
+    recruitmentBackground: result.recruitmentBackground?.text
+      ? result.recruitmentBackground
+      : flexy.recruitmentBackground,
+    requiredRequirements:
+      result.requiredRequirements?.length
+        ? result.requiredRequirements
+        : flexy.requiredRequirements || [],
+    preferredRequirements:
+      result.preferredRequirements?.length
+        ? result.preferredRequirements
+        : flexy.preferredRequirements || [],
+    budget: result.budget?.provenance === 'confirmed' ? result.budget : flexy.budget || result.budget,
+    unknowns: [...new Set([...(result.unknowns || []), ...(flexy.unknowns || [])])],
+    requiredSkills:
+      result.requiredSkills?.length
+        ? result.requiredSkills
+        : flexy.requiredSkills || [],
   }
 }
 
 function buildProposalFallback(input: ProposalInput): ProposalResult {
+  if (input.platform === 'flexy') {
+    return buildFlexyInterestMessage(input)
+  }
   const name = input.profile.name || '応募者'
   const skills = input.profile.skills.map((s) => s.name).filter(Boolean).slice(0, 5)
   const achievements = input.profile.achievements
@@ -172,8 +275,11 @@ function buildProposalFallback(input: ProposalInput): ProposalResult {
     scopeIn: input.diagnosis.scopeIn?.length ? input.diagnosis.scopeIn : ['募集文に記載の主要成果物'],
     scopeOut: input.diagnosis.scopeOut?.length ? input.diagnosis.scopeOut : ['明記のない保守運用', '追加機能の無償対応'],
     meetingTopics: ['成功条件の定義', '優先機能', '連絡頻度'],
+    documentType: 'proposal',
   }
 }
+
+export { buildFlexyInterestMessage } from './flexyMessage'
 
 function buildReplyAssist(input: ReplyInput) {
   const body = input.replyBody
@@ -207,10 +313,47 @@ function buildReplyAssist(input: ReplyInput) {
   }
 }
 
+function toDiagnosisResult(
+  input: DiagnosisInput,
+  decision: ReturnType<typeof decideRecommendation>,
+  axes: DiagnosisResult['axes'],
+  extras?: Partial<DiagnosisResult>,
+): DiagnosisResult {
+  const preQuestions = [
+    ...decision.selfCheckQuestions,
+    ...decision.consultantQuestions,
+    ...(input.extraction.unknowns || []).map((u) => `${u}を教えてください`),
+    ...input.safety
+      .filter((s) => s.classification !== 'BLOCK' && s.status === 'open')
+      .slice(0, 3)
+      .map((s) => s.reason.replace(/です$/, '') + 'について、現状を教えてください'),
+  ]
+  const unique = [...new Set(preQuestions)].slice(0, 8)
+
+  return {
+    axes,
+    recommendation: decision.recommendation,
+    recommendationReason: decision.reason,
+    clientIntent: extras?.clientIntent || {
+      underlyingProblem: '募集文から読み取れる業務課題の解消',
+      selectionPriority: '確実な完遂とコミュニケーション',
+      concerns: '要件の食い違いや納期遅延',
+      evidenceNeeded: '類似実績と進め方の具体性',
+    },
+    preQuestions: extras?.preQuestions?.length ? extras.preQuestions : unique,
+    scopeIn: extras?.scopeIn?.length
+      ? extras.scopeIn
+      : input.extraction.deliverables.filter((d) => d.provenance === 'confirmed').map((d) => d.text),
+    scopeOut: extras?.scopeOut?.length
+      ? extras.scopeOut
+      : ['募集文にない追加機能', '無償の長期保守'],
+  }
+}
+
 /** Offline / no-key provider that keeps rule-based judgment usable (spec §17.2 / §19.6). */
 export class FallbackAiProvider implements AiProvider {
   async extract(input: ExtractionInput): Promise<ExtractionResult> {
-    return extractByHeuristics(input.title, input.body)
+    return extractByHeuristics(input.title, input.body, input.platform)
   }
 
   async estimate(input: EstimateInput): Promise<EffortEstimate> {
@@ -224,9 +367,15 @@ export class FallbackAiProvider implements AiProvider {
       extraction: input.extraction,
       profile: input.profile,
       budgetMinYen: input.budgetMinYen,
+      budgetMaxYen: input.budgetMaxYen,
       feeRatePercent: input.feeRatePercent,
       deadlineDays: input.deadlineDays,
       applicants: input.applicants,
+      engagementType: input.engagementType,
+      budgetType: input.budgetType,
+      expectedMonthlyHoursMin: input.expectedMonthlyHoursMin,
+      expectedMonthlyHoursMax: input.expectedMonthlyHoursMax,
+      requirementEvidences: input.requirementEvidences,
     })
 
     const axes = buildAxes({
@@ -235,34 +384,19 @@ export class FallbackAiProvider implements AiProvider {
       extraction: input.extraction,
       profile: input.profile,
       budgetMinYen: input.budgetMinYen,
+      budgetMaxYen: input.budgetMaxYen,
       feeRatePercent: input.feeRatePercent,
       deadlineDays: input.deadlineDays,
       applicants: input.applicants,
+      engagementType: input.engagementType,
+      budgetType: input.budgetType,
+      expectedMonthlyHoursMin: input.expectedMonthlyHoursMin,
+      expectedMonthlyHoursMax: input.expectedMonthlyHoursMax,
+      requirementEvidences: input.requirementEvidences,
       decision,
     })
 
-    const preQuestions = [
-      ...(input.extraction.unknowns || []).map((u) => `${u}を教えてください`),
-      ...input.safety
-        .filter((s) => s.classification !== 'BLOCK' && s.status === 'open')
-        .slice(0, 3)
-        .map((s) => s.reason.replace(/です$/, '') + 'について、現状を教えてください'),
-    ].slice(0, 5)
-
-    return {
-      axes,
-      recommendation: decision.recommendation,
-      recommendationReason: decision.reason,
-      clientIntent: {
-        underlyingProblem: '募集文から読み取れる業務課題の解消',
-        selectionPriority: '確実な完遂とコミュニケーション',
-        concerns: '要件の食い違いや納期遅延',
-        evidenceNeeded: '類似実績と進め方の具体性',
-      },
-      preQuestions,
-      scopeIn: input.extraction.deliverables.filter((d) => d.provenance === 'confirmed').map((d) => d.text),
-      scopeOut: ['募集文にない追加機能', '無償の長期保守'],
-    }
+    return toDiagnosisResult(input, decision, axes)
   }
 
   async generateProposal(input: ProposalInput): Promise<ProposalResult> {
