@@ -17,8 +17,10 @@ function onStart() {
 <template>
   <div class="cb-page">
     <div class="text-center">
-      <p class="m-0 text-sm font-extrabold tracking-[4px] text-blue-500 sm:text-base">CLEAR BID</p>
-      <h1 class="m-0 mt-2 text-[28px] font-extrabold leading-tight tracking-tight text-slate-900 sm:text-[32px]">
+      <p class="m-0 text-[26px] font-extrabold tracking-[0.18em] text-blue-500 sm:text-[30px]">
+        CLEAR BID
+      </p>
+      <h1 class="m-0 mt-2 text-[22px] font-bold leading-snug tracking-tight text-slate-900 sm:text-[24px]">
         取るべき案件を、クリアに。
       </h1>
     </div>
