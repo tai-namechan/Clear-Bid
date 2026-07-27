@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BUDGET_TYPES, PLATFORMS } from '#shared/constants'
+import { BUDGET_TYPES, DEFAULT_FEE_RATES, PLATFORMS } from '#shared/constants'
 import type { JobInput } from '#shared/types'
 
 const props = defineProps<{
@@ -20,7 +20,23 @@ function u<K extends keyof JobInput>(k: K, v: JobInput[K]) {
   emit('update:modelValue', { ...props.modelValue, [k]: v })
 }
 
+function onPlatformChange(platform: JobInput['platform']) {
+  const next: JobInput = {
+    ...props.modelValue,
+    platform,
+  }
+  if (platform === 'flexy') {
+    next.engagementType = 'ongoing'
+    next.budgetType = 'monthly'
+    if (!next.feeRatePercent && next.feeRatePercent !== '0') {
+      next.feeRatePercent = String(DEFAULT_FEE_RATES.flexy ?? 0)
+    }
+  }
+  emit('update:modelValue', next)
+}
+
 const ok = computed(() => Boolean(inp.value.title.trim() && inp.value.body.trim()))
+const isFlexy = computed(() => inp.value.platform === 'flexy')
 </script>
 
 <template>
@@ -31,7 +47,11 @@ const ok = computed(() => Boolean(inp.value.title.trim() && inp.value.body.trim(
     </p>
 
     <label class="cb-label">利用サービス</label>
-    <select class="cb-input" :value="inp.platform" @change="u('platform', ($event.target as HTMLSelectElement).value as JobInput['platform'])">
+    <select
+      class="cb-input"
+      :value="inp.platform"
+      @change="onPlatformChange(($event.target as HTMLSelectElement).value as JobInput['platform'])"
+    >
       <option v-for="(label, key) in PLATFORMS" :key="key" :value="key">{{ label }}</option>
     </select>
 
@@ -51,6 +71,52 @@ const ok = computed(() => Boolean(inp.value.title.trim() && inp.value.body.trim(
       placeholder="募集文をそのまま貼り付け..."
       @input="u('body', ($event.target as HTMLTextAreaElement).value)"
     />
+
+    <div v-if="isFlexy" class="cb-card mb-3 border border-blue-100 bg-blue-50/40">
+      <p class="mb-2 text-[13px] font-bold text-slate-900">FLEXY案件条件</p>
+      <p class="mb-2 text-[11px] leading-relaxed text-slate-500">
+        月間稼働時間が不明な場合は空欄のままで構いません。週の稼働日数から勝手に時間換算しません。
+      </p>
+      <label class="cb-label">案件URL</label>
+      <input
+        class="cb-input"
+        type="url"
+        :value="inp.url || ''"
+        placeholder="https://..."
+        @input="u('url', ($event.target as HTMLInputElement).value)"
+      >
+      <div class="grid grid-cols-2 gap-1.5">
+        <div>
+          <label class="cb-label">想定月間時間・下限</label>
+          <input
+            class="cb-input"
+            type="number"
+            :value="inp.expectedMonthlyHoursMin || ''"
+            placeholder="空欄可"
+            @input="u('expectedMonthlyHoursMin', ($event.target as HTMLInputElement).value)"
+          >
+        </div>
+        <div>
+          <label class="cb-label">想定月間時間・上限</label>
+          <input
+            class="cb-input"
+            type="number"
+            :value="inp.expectedMonthlyHoursMax || ''"
+            placeholder="空欄可"
+            @input="u('expectedMonthlyHoursMax', ($event.target as HTMLInputElement).value)"
+          >
+        </div>
+      </div>
+      <label class="cb-label">手数料率（%）</label>
+      <input
+        class="cb-input"
+        type="number"
+        :value="inp.feeRatePercent ?? ''"
+        placeholder="0"
+        @input="u('feeRatePercent', ($event.target as HTMLInputElement).value)"
+      >
+      <p class="m-0 text-[11px] text-slate-400">初期値は FLEXY 0%。実際の契約条件があれば上書きしてください。</p>
+    </div>
 
     <label class="cb-label">予算</label>
     <div class="mb-2 flex gap-1.5">

@@ -13,6 +13,7 @@ import {
 import {
   INIT_PROFILE,
   INIT_STATS,
+  normalizeProfile,
   type AppStats,
   type PipelineItem,
   type StatusCode,
@@ -125,7 +126,7 @@ export function useClearBidStore() {
         fromD1 = true
         d1Enabled.value = true
         sessionUser.value = sync.user || null
-        if (sync.documents.profile) profile.value = sync.documents.profile as UserProfile
+        if (sync.documents.profile) profile.value = normalizeProfile(sync.documents.profile as UserProfile)
         if (Array.isArray(sync.documents.pipeline)) {
           pipeline.value = normalizePipeline(sync.documents.pipeline as Partial<Opportunity>[])
         }
@@ -140,7 +141,7 @@ export function useClearBidStore() {
     }
 
     if (!fromD1) {
-      profile.value = await loadLocal(STORAGE_KEYS.PROFILE, { ...INIT_PROFILE })
+      profile.value = normalizeProfile(await loadLocal(STORAGE_KEYS.PROFILE, { ...INIT_PROFILE }))
       pipeline.value = normalizePipeline(await loadLocal<Partial<Opportunity>[]>(STORAGE_KEYS.PIPELINE, []))
       const loadedStats = await loadLocal(STORAGE_KEYS.STATS, { ...INIT_STATS })
       stats.value = { ...recomputeStats(pipeline.value, loadedStats), diagnosed: loadedStats.diagnosed || 0 }
@@ -185,9 +186,10 @@ export function useClearBidStore() {
   }
 
   const saveProfile = async (p: UserProfile) => {
-    profile.value = p
-    await saveLocal(STORAGE_KEYS.PROFILE, p)
-    await syncPut('profile', p, d1Enabled)
+    const normalized = normalizeProfile(p)
+    profile.value = normalized
+    await saveLocal(STORAGE_KEYS.PROFILE, normalized)
+    await syncPut('profile', normalized, d1Enabled)
   }
 
   const savePipeline = async (items: PipelineItem[]) => {

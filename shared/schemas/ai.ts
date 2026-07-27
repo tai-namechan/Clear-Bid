@@ -8,6 +8,12 @@ export const ExtractedItemSchema = z.object({
   quote: z.string().optional().default(''),
 })
 
+export const RequirementItemSchema = z.object({
+  text: z.string(),
+  provenance: ProvenanceSchema,
+  quote: z.string().optional().default(''),
+})
+
 export const ExtractionResultSchema = z.object({
   deliverables: z.array(ExtractedItemSchema).default([]),
   requiredSkills: z.array(ExtractedItemSchema).default([]),
@@ -18,6 +24,16 @@ export const ExtractionResultSchema = z.object({
   revisionTerms: ExtractedItemSchema.optional(),
   selectionCriteria: ExtractedItemSchema.optional(),
   unknowns: z.array(z.string()).default([]),
+  /** FLEXY 等の継続案件向け（後方互換・任意） */
+  companyName: ExtractedItemSchema.optional(),
+  role: ExtractedItemSchema.optional(),
+  workStyle: ExtractedItemSchema.optional(),
+  workLocation: ExtractedItemSchema.optional(),
+  workDays: ExtractedItemSchema.optional(),
+  requiredAvailability: ExtractedItemSchema.optional(),
+  recruitmentBackground: ExtractedItemSchema.optional(),
+  requiredRequirements: z.array(RequirementItemSchema).default([]),
+  preferredRequirements: z.array(RequirementItemSchema).default([]),
 })
 
 export const SafetyFindingSchema = z.object({
@@ -85,6 +101,8 @@ export const ProposalResultSchema = z.object({
   scopeIn: z.array(z.string()).default([]),
   scopeOut: z.array(z.string()).default([]),
   meetingTopics: z.array(z.string()).default([]),
+  /** proposal=通常提案 / interest_message=FLEXY応募希望メッセージ */
+  documentType: z.enum(['proposal', 'interest_message']).default('proposal'),
 })
 
 export const ReplyAssistSchema = z.object({

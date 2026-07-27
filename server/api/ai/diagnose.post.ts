@@ -1,5 +1,5 @@
 import { DiagnosisResultSchema, EffortEstimateSchema, ExtractionResultSchema, SafetyFindingSchema } from '../../../shared/schemas/ai'
-import type { UserProfile } from '../../../shared/types'
+import type { EngagementType, RequirementEvidence, UserProfile } from '../../../shared/types'
 import { getAiProvider } from '../../ai/provider'
 import { createErrorBody } from '../../utils/errors'
 
@@ -12,9 +12,15 @@ export default defineEventHandler(async (event) => {
     effort?: unknown
     profile?: UserProfile
     budgetMinYen?: number | null
+    budgetMaxYen?: number | null
     feeRatePercent?: number
     deadlineDays?: number | null
     applicants?: number | null
+    engagementType?: EngagementType
+    budgetType?: string
+    expectedMonthlyHoursMin?: string | null
+    expectedMonthlyHoursMax?: string | null
+    requirementEvidences?: RequirementEvidence[]
   }>(event)
 
   if (!body?.title || !body?.body || !body?.profile) {
@@ -39,9 +45,15 @@ export default defineEventHandler(async (event) => {
     effort: effort.data,
     profile: body.profile,
     budgetMinYen: body.budgetMinYen ?? null,
+    budgetMaxYen: body.budgetMaxYen ?? null,
     feeRatePercent: body.feeRatePercent ?? 20,
     deadlineDays: body.deadlineDays,
     applicants: body.applicants,
+    engagementType: body.engagementType,
+    budgetType: body.budgetType,
+    expectedMonthlyHoursMin: body.expectedMonthlyHoursMin,
+    expectedMonthlyHoursMax: body.expectedMonthlyHoursMax,
+    requirementEvidences: body.requirementEvidences,
   })
 
   const parsed = DiagnosisResultSchema.safeParse(result)
