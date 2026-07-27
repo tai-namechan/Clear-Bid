@@ -4,12 +4,16 @@ import type { UserProfile } from '#shared/types'
 import { AI_USAGE_LIMITS } from '#shared/constants'
 import { currentPeriod } from '#shared/domain/usage'
 
-const { profile, saveProfile, usage, d1Enabled, sessionUser } = useClearBidStore()
+const { profile, saveProfile, usage, d1Enabled, sessionUser, exportBackup, importBackup, pipeline } = useClearBidStore()
 const p = ref<UserProfile>({ ...profile.value })
 const ok = ref(false)
 const ns = ref('')
 const na = ref({ title: '', result: '' })
 const nn = ref('')
+const backupMsg = ref('')
+const backupError = ref('')
+const importText = ref('')
+const fileInput = ref<HTMLInputElement | null>(null)
 
 const usageCounts = computed(() => {
   const period = currentPeriod()
@@ -20,6 +24,11 @@ const usageCounts = computed(() => {
     proposal: u.counts.proposal || 0,
     reply: u.counts.reply || 0,
   }
+})
+
+const backupSummary = computed(() => {
+  const name = profile.value.name || '（名前未設定）'
+  return `${name} · 案件 ${pipeline.value.length} 件`
 })
 
 watch(profile, (v) => {
@@ -54,6 +63,66 @@ function addNg() {
   if (!nn.value.trim()) return
   u('ngConditions', [...p.value.ngConditions, nn.value.trim()])
   nn.value = ''
+}
+
+function downloadBackup() {
+  backupError.value = ''
+  backupMsg.value = ''
+  try {
+    const data = exportBackup()
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const day = new Date().toISOString().slice(0, 10)
+    a.href = url
+    a.download = `clear-bid-backup-${day}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    backupMsg.value = 'バックアップをダウンロードしました。このファイルをスマホへ送って取り込んでください。'
+  } catch (e) {
+    backupError.value = e instanceof Error ? e.message : '書き出しに失敗しました'
+  }
+}
+
+async function applyBackupObject(raw: unknown) {
+  if (!confirm('いまの端末のデータを、バックアップの内容で置き換えます。よろしいですか？')) return
+  await importBackup(raw)
+  p.value = {
+    ...profile.value,
+    skills: [...(profile.value.skills || [])],
+    achievements: [...(profile.value.achievements || [])],
+    ngConditions: [...(profile.value.ngConditions || [])],
+  }
+  backupMsg.value = '取り込み完了。ホームや案件一覧を確認してください。'
+  importText.value = ''
+}
+
+async function onPickFile(ev: Event) {
+  backupError.value = ''
+  backupMsg.value = ''
+  const input = ev.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  try {
+    const text = await file.text()
+    const raw = JSON.parse(text)
+    await applyBackupObject(raw)
+  } catch (e) {
+    backupError.value = e instanceof Error ? e.message : 'ファイルの読み込みに失敗しました'
+  } finally {
+    input.value = ''
+  }
+}
+
+async function onPasteImport() {
+  backupError.value = ''
+  backupMsg.value = ''
+  try {
+    const raw = JSON.parse(importText.value)
+    await applyBackupObject(raw)
+  } catch (e) {
+    backupError.value = e instanceof Error ? e.message : 'JSON の形式が不正です'
+  }
 }
 </script>
 
@@ -179,6 +248,44 @@ function addNg() {
         <p class="m-0">保存先: {{ d1Enabled ? 'Cloudflare D1（+ 端末キャッシュ）' : 'この端末の localStorage' }}</p>
         <p v-if="sessionUser" class="m-0 mt-1">ログイン: {{ sessionUser.email }}</p>
         <p v-else class="m-0 mt-1 text-slate-400">未同期（ローカル利用）</p>
+      </div>
+    </section>
+
+    <section class="mb-4">
+      <p class="mb-2 text-[13px] font-bold text-slate-900">データの持ち運び</p>
+      <p class="mb-2 text-[11px] text-slate-500">
+        PCで入れたデータをスマホへ移すとき用です。いまの内容: {{ backupSummary }}
+      </p>
+      <div class="cb-card mb-2">
+        <p class="mb-2 text-[11px] font-semibold text-slate-700">1. PCで書き出す</p>
+        <button class="cb-cta" type="button" @click="downloadBackup">バックアップをダウンロード</button>
+        <p class="mt-2 text-[11px] text-slate-400">
+          できた JSON ファイルを LINE / メール / Googleドライブ などでスマホへ送る
+        </p>
+      </div>
+      <div class="cb-card mb-0">
+        <p class="mb-2 text-[11px] font-semibold text-slate-700">2. スマホで取り込む</p>
+        <input
+          ref="fileInput"
+          class="mb-2 block w-full text-xs"
+          type="file"
+          accept="application/json,.json"
+          @change="onPickFile"
+        >
+        <p class="mb-1 text-[11px] text-slate-500">または JSON を貼り付け:</p>
+        <textarea
+          v-model="importText"
+          class="cb-input min-h-[88px] font-mono text-[11px]"
+          placeholder='{"version":1,"profile":...}'
+        />
+        <button class="cb-outline-btn" type="button" :disabled="!importText.trim()" @click="onPasteImport">
+          貼り付けた内容を取り込む
+        </button>
+        <p v-if="backupMsg" class="mt-2 text-xs text-green-700">{{ backupMsg }}</p>
+        <p v-if="backupError" class="mt-2 text-xs text-red-600">{{ backupError }}</p>
+        <p class="mt-2 text-[11px] text-amber-700">
+          取り込むと、この端末のいまのデータはバックアップ内容で置き換わります。
+        </p>
       </div>
     </section>
 
