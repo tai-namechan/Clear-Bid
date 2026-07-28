@@ -1,28 +1,28 @@
 # Clear Bid セットアップマニュアル
 
-## スマホで開く（これを使う）
+## これからやること（推奨）
 
-GitHub / jsDelivr の HTML は **コードの文字** になってしまいます（仕様です）。
+Clear Invoice と同じく **Vercel + Supabase** にまとめます。
 
-**スマホではこの Markdown を開いてください（GitHub が画面として表示します）:**
+**スマホで読む手順書:**  
+https://github.com/tai-namechan/Clear-Bid/blob/main/docs/manual/supabase-vercel-migration.md
+
+内容:
+- Supabase / Vercel の用意
+- データの退避と流し込み
+- **Cloudflare（Workers / D1 / Access）の消し方**
+
+---
+
+## 以前の Cloudflare 向け手順（参考・非推奨）
+
+移行完了までは残してあります。新規では使わないでください。
 
 https://github.com/tai-namechan/Clear-Bid/blob/main/docs/manual/clear-bid-setup-manual.md
 
-GitHub アプリでも、スマホのブラウザでもOKです。
-
 ## PCで開く
 
-- Markdown: [`clear-bid-setup-manual.md`](./clear-bid-setup-manual.md)（GitHub上で読む）
-- HTML: [`clear-bid-setup-manual.html`](./clear-bid-setup-manual.html)  
-  → **PCのファイルをダブルクリック**でブラウザ表示（GitHub上のRawは不可）
-- PDF: PCで HTML を開いて「印刷 → PDFに保存」
-
-## アプリ起動中
-
-`pnpm dev` またはデプロイ後:
-
-`/manual/clear-bid-setup-manual.html`
-
-例: `http://localhost:3000/manual/clear-bid-setup-manual.html`
+- 移行手順（Markdown）: [`supabase-vercel-migration.md`](./supabase-vercel-migration.md)
+- 旧 HTML: [`clear-bid-setup-manual.html`](./clear-bid-setup-manual.html)
 
 技術者向け短い手順: [`../DEPLOY.md`](../DEPLOY.md)

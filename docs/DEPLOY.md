@@ -1,4 +1,20 @@
-# Deploy guide (AI + D1 + Access)
+# Deploy guide
+
+## 方針（決定）
+
+Clear Bid は **Vercel + Supabase** にまとめます（Clear Invoice と同じ系統）。  
+Cloudflare Workers / D1 / Access は移行後に削除します。
+
+**手順書（推奨・スマホ可）:**  
+[`docs/manual/supabase-vercel-migration.md`](./manual/supabase-vercel-migration.md)
+
+## 旧 Cloudflare 手順
+
+移行完了までは参考用に残しています: [`docs/manual/clear-bid-setup-manual.md`](./manual/clear-bid-setup-manual.md)
+
+---
+
+# （旧）Deploy guide (AI + D1 + Access)
 
 Clear Bid を自分用の仕事道具として Cloudflare に載せる手順。
 
