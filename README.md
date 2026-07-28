@@ -30,17 +30,15 @@ pnpm build
 
 ## セットアップ手順（初めての人向け）
 
-**スマホで読む（推奨）:**  
-https://github.com/tai-namechan/Clear-Bid/blob/main/docs/manual/clear-bid-setup-manual.md
+**これから（推奨）: Vercel + Supabase にまとめる**  
+https://github.com/tai-namechan/Clear-Bid/blob/main/docs/manual/supabase-vercel-migration.md
 
-> GitHub の HTML / Raw / jsDelivr はコード表示になることがあります。スマホは **Markdown** を開いてください。
+Cloudflare の消し方も同ドキュメントに記載。
 
-- Markdown: [`docs/manual/clear-bid-setup-manual.md`](docs/manual/clear-bid-setup-manual.md)
-- HTML（PCでローカルファイルを開く用）: [`docs/manual/clear-bid-setup-manual.html`](docs/manual/clear-bid-setup-manual.html)
-- 開き方: [`docs/manual/README.md`](docs/manual/README.md)
-- ローカル / デプロイ後: `/manual/clear-bid-setup-manual.html`
+旧 Cloudflare 手順（参考）:  
+[`docs/manual/clear-bid-setup-manual.md`](docs/manual/clear-bid-setup-manual.md)
 
-技術者向けの短い手順: [`docs/DEPLOY.md`](docs/DEPLOY.md)
+技術者向け: [`docs/DEPLOY.md`](docs/DEPLOY.md)
 
 ```bash
 pnpm deploy
