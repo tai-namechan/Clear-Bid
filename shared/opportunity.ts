@@ -1,4 +1,10 @@
-import type { Platform, Recommendation, StatusCode } from './types'
+import type {
+  ApplicationType,
+  Platform,
+  Recommendation,
+  RecommendedAction,
+  StatusCode,
+} from './types'
 
 export type { Platform, Recommendation, StatusCode }
 
@@ -50,12 +56,19 @@ export interface Opportunity {
   body?: string
   url?: string
   sourceJobId?: string
+  companyName?: string
+  recruiterName?: string
+  applicationType?: ApplicationType
   budgetType?: string
   budgetMin?: string
   budgetMax?: string
   deadline?: string
   applicants?: string
   recommendation?: Recommendation
+  recommendedAction?: RecommendedAction
+  actualAction?: RecommendedAction | string
+  generatedMessage?: string
+  appliedAt?: string
   strategy?: string
   skipReason?: string
   note?: string
@@ -76,12 +89,14 @@ export interface DiagnosisVersionRecord {
   createdAt: string
   recommendation?: Recommendation
   recommendationReason?: string
+  recommendedAction?: RecommendedAction
   userDecision?: string
   extraction?: unknown
   safety?: unknown
   effort?: unknown
   axes?: unknown
   proposal?: unknown
+  diagnosisSnapshot?: unknown
 }
 
 export interface ReplyRecord {
@@ -118,12 +133,19 @@ export function normalizeOpportunity(raw: Partial<Opportunity> & { id: string; t
     body: raw.body,
     url: raw.url,
     sourceJobId: raw.sourceJobId,
+    companyName: raw.companyName,
+    recruiterName: raw.recruiterName,
+    applicationType: raw.applicationType,
     budgetType: raw.budgetType,
     budgetMin: raw.budgetMin,
     budgetMax: raw.budgetMax,
     deadline: raw.deadline,
     applicants: raw.applicants,
     recommendation: raw.recommendation,
+    recommendedAction: raw.recommendedAction,
+    actualAction: raw.actualAction,
+    generatedMessage: raw.generatedMessage,
+    appliedAt: raw.appliedAt,
     strategy: raw.strategy,
     skipReason: raw.skipReason,
     note: raw.note,

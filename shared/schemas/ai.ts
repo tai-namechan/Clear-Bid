@@ -89,6 +89,46 @@ export const DiagnosisResultSchema = z.object({
   preQuestions: z.array(z.string()).default([]),
   scopeIn: z.array(z.string()).default([]),
   scopeOut: z.array(z.string()).default([]),
+  /** 媒体別応募判断（後方互換のためすべて任意） */
+  sourcePlatform: z
+    .enum(['youtrust', 'crowdworks', 'coconala', 'lancers', 'flexy', 'other'])
+    .optional(),
+  applicationType: z.enum(['standard', 'casual_talk', 'hear_more', 'unknown']).optional(),
+  overallScore: z.number().min(0).max(100).optional(),
+  existingLabel: z.enum(['攻め時', '様子見', '見送り']).optional(),
+  recommendedAction: z.enum(['apply', 'casual_talk', 'confirm_conditions', 'skip']).optional(),
+  applicationPriority: z.enum(['high', 'medium', 'low']).optional(),
+  decisionReason: z.string().optional(),
+  matchedExperiences: z
+    .array(
+      z.object({
+        text: z.string(),
+        evidenceSource: z.string(),
+      }),
+    )
+    .optional(),
+  requirements: z
+    .array(
+      z.object({
+        requirement: z.string(),
+        importance: z.enum(['required', 'preferred']),
+        status: z.enum(['matched', 'transferable', 'unverified', 'missing']),
+        reason: z.string(),
+        howToHandle: z.string(),
+      }),
+    )
+    .optional(),
+  gaps: z.array(z.string()).optional(),
+  conditionRisks: z
+    .array(
+      z.object({
+        risk: z.string(),
+        evidence: z.string(),
+      }),
+    )
+    .optional(),
+  questionsToConfirm: z.array(z.string()).optional(),
+  confidence: z.enum(['high', 'medium', 'low']).optional(),
 })
 
 export const ProposalResultSchema = z.object({
@@ -101,8 +141,13 @@ export const ProposalResultSchema = z.object({
   scopeIn: z.array(z.string()).default([]),
   scopeOut: z.array(z.string()).default([]),
   meetingTopics: z.array(z.string()).default([]),
-  /** proposal=通常提案 / interest_message=FLEXY応募希望メッセージ */
-  documentType: z.enum(['proposal', 'interest_message']).default('proposal'),
+  /** proposal=通常提案 / interest_message=FLEXY / youtrust_message / short_message=その他短文 */
+  documentType: z
+    .enum(['proposal', 'interest_message', 'youtrust_message', 'short_message'])
+    .default('proposal'),
+  recommendedInterestTarget: z.enum(['content', 'person', 'company', 'other']).optional(),
+  messageCharacterCount: z.number().int().nonnegative().optional(),
+  evidenceUsed: z.array(z.string()).optional(),
 })
 
 export const ReplyAssistSchema = z.object({
@@ -126,4 +171,4 @@ export type ProposalResult = z.infer<typeof ProposalResultSchema>
 export type ReplyAssistResult = z.infer<typeof ReplyAssistSchema>
 
 export const PROPOSAL_STRATEGIES = ['課題解決型', '実績・証拠型', '進め方明確型'] as const
-
+export const OTHER_MESSAGE_LENGTHS = ['short', 'long'] as const

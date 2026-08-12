@@ -10,6 +10,9 @@ const ok = ref(false)
 const ns = ref('')
 const na = ref({ title: '', result: '' })
 const nn = ref('')
+const niTech = ref('')
+const niCompany = ref('')
+const niDomain = ref('')
 const backupMsg = ref('')
 const backupError = ref('')
 const importText = ref('')
@@ -32,7 +35,17 @@ const backupSummary = computed(() => {
 })
 
 watch(profile, (v) => {
-  p.value = { ...v, skills: [...(v.skills || [])], achievements: [...(v.achievements || [])], ngConditions: [...(v.ngConditions || [])] }
+  p.value = {
+    ...v,
+    skills: [...(v.skills || [])],
+    achievements: [...(v.achievements || [])],
+    ngConditions: [...(v.ngConditions || [])],
+    interestAreas: {
+      technologies: [...(v.interestAreas?.technologies || [])],
+      companies: [...(v.interestAreas?.companies || [])],
+      domains: [...(v.interestAreas?.domains || [])],
+    },
+  }
 }, { immediate: true })
 
 function u<K extends keyof UserProfile>(k: K, v: UserProfile[K]) {
@@ -65,6 +78,28 @@ function addNg() {
   nn.value = ''
 }
 
+function addInterest(kind: 'technologies' | 'companies' | 'domains', raw: string) {
+  const v = raw.trim()
+  if (!v) return
+  const areas = {
+    technologies: [...(p.value.interestAreas?.technologies || [])],
+    companies: [...(p.value.interestAreas?.companies || [])],
+    domains: [...(p.value.interestAreas?.domains || [])],
+  }
+  if (!areas[kind].includes(v)) areas[kind].push(v)
+  u('interestAreas', areas)
+}
+
+function removeInterest(kind: 'technologies' | 'companies' | 'domains', index: number) {
+  const areas = {
+    technologies: [...(p.value.interestAreas?.technologies || [])],
+    companies: [...(p.value.interestAreas?.companies || [])],
+    domains: [...(p.value.interestAreas?.domains || [])],
+  }
+  areas[kind] = areas[kind].filter((_, i) => i !== index)
+  u('interestAreas', areas)
+}
+
 function downloadBackup() {
   backupError.value = ''
   backupMsg.value = ''
@@ -92,6 +127,11 @@ async function applyBackupObject(raw: unknown) {
     skills: [...(profile.value.skills || [])],
     achievements: [...(profile.value.achievements || [])],
     ngConditions: [...(profile.value.ngConditions || [])],
+    interestAreas: {
+      technologies: [...(profile.value.interestAreas?.technologies || [])],
+      companies: [...(profile.value.interestAreas?.companies || [])],
+      domains: [...(profile.value.interestAreas?.domains || [])],
+    },
   }
   backupMsg.value = '取り込み完了。ホームや案件一覧を確認してください。'
   importText.value = ''
@@ -208,6 +248,58 @@ async function onPasteImport() {
       <input class="cb-input" :value="na.title" placeholder="実績タイトル" @input="na = { ...na, title: ($event.target as HTMLInputElement).value }">
       <input class="cb-input" :value="na.result" placeholder="成果（数字入り）" @input="na = { ...na, result: ($event.target as HTMLInputElement).value }">
       <button class="cb-outline-btn" @click="addAchievement">実績を追加</button>
+    </section>
+
+    <section class="mb-4">
+      <p class="mb-2 text-[13px] font-bold text-slate-900">関心のある技術・企業・領域</p>
+      <p class="mb-2 text-[11px] leading-relaxed text-slate-500">
+        応募理由の生成に使います。スキルマッチの加点には使いません（実務経験とは区別されます）。
+      </p>
+      <label class="cb-label">技術</label>
+      <div class="mb-2 flex flex-wrap gap-1.5">
+        <span
+          v-for="(t, i) in p.interestAreas?.technologies || []"
+          :key="`t-${i}`"
+          class="flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-xs text-slate-700"
+        >
+          {{ t }}
+          <button class="border-none bg-transparent p-0 text-sm text-slate-400" @click="removeInterest('technologies', i)">×</button>
+        </span>
+      </div>
+      <div class="mb-3 flex gap-1.5">
+        <input class="cb-input mb-0 flex-1" :value="niTech" placeholder="例: 生成AI" @input="niTech = ($event.target as HTMLInputElement).value" @keydown.enter="addInterest('technologies', niTech); niTech = ''">
+        <button class="whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-blue-500" @click="addInterest('technologies', niTech); niTech = ''">追加</button>
+      </div>
+      <label class="cb-label">企業</label>
+      <div class="mb-2 flex flex-wrap gap-1.5">
+        <span
+          v-for="(t, i) in p.interestAreas?.companies || []"
+          :key="`c-${i}`"
+          class="flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-xs text-slate-700"
+        >
+          {{ t }}
+          <button class="border-none bg-transparent p-0 text-sm text-slate-400" @click="removeInterest('companies', i)">×</button>
+        </span>
+      </div>
+      <div class="mb-3 flex gap-1.5">
+        <input class="cb-input mb-0 flex-1" :value="niCompany" placeholder="関心のある企業名" @input="niCompany = ($event.target as HTMLInputElement).value" @keydown.enter="addInterest('companies', niCompany); niCompany = ''">
+        <button class="whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-blue-500" @click="addInterest('companies', niCompany); niCompany = ''">追加</button>
+      </div>
+      <label class="cb-label">領域</label>
+      <div class="mb-2 flex flex-wrap gap-1.5">
+        <span
+          v-for="(t, i) in p.interestAreas?.domains || []"
+          :key="`d-${i}`"
+          class="flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-xs text-slate-700"
+        >
+          {{ t }}
+          <button class="border-none bg-transparent p-0 text-sm text-slate-400" @click="removeInterest('domains', i)">×</button>
+        </span>
+      </div>
+      <div class="flex gap-1.5">
+        <input class="cb-input mb-0 flex-1" :value="niDomain" placeholder="例: 業務改善" @input="niDomain = ($event.target as HTMLInputElement).value" @keydown.enter="addInterest('domains', niDomain); niDomain = ''">
+        <button class="whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-blue-500" @click="addInterest('domains', niDomain); niDomain = ''">追加</button>
+      </div>
     </section>
 
     <section class="mb-4">

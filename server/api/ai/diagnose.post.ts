@@ -1,5 +1,5 @@
 import { DiagnosisResultSchema, EffortEstimateSchema, ExtractionResultSchema, SafetyFindingSchema } from '../../../shared/schemas/ai'
-import type { EngagementType, RequirementEvidence, UserProfile } from '../../../shared/types'
+import type { ApplicationType, EngagementType, Platform, RequirementEvidence, UserProfile } from '../../../shared/types'
 import { getAiProvider } from '../../ai/provider'
 import { createErrorBody } from '../../utils/errors'
 
@@ -21,6 +21,10 @@ export default defineEventHandler(async (event) => {
     expectedMonthlyHoursMin?: string | null
     expectedMonthlyHoursMax?: string | null
     requirementEvidences?: RequirementEvidence[]
+    platform?: Platform | string
+    applicationType?: ApplicationType
+    companyName?: string
+    recruiterName?: string
   }>(event)
 
   if (!body?.title || !body?.body || !body?.profile) {
@@ -54,6 +58,10 @@ export default defineEventHandler(async (event) => {
     expectedMonthlyHoursMin: body.expectedMonthlyHoursMin,
     expectedMonthlyHoursMax: body.expectedMonthlyHoursMax,
     requirementEvidences: body.requirementEvidences,
+    platform: body.platform,
+    applicationType: body.applicationType,
+    companyName: body.companyName,
+    recruiterName: body.recruiterName,
   })
 
   const parsed = DiagnosisResultSchema.safeParse(result)

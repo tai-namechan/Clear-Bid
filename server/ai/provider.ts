@@ -5,7 +5,16 @@ import type {
   ProposalResult,
   SafetyFinding,
 } from '../../shared/schemas/ai'
-import type { EngagementType, Platform, RequirementEvidence, UserProfile } from '../../shared/types'
+import type {
+  ApplicationType,
+  EngagementType,
+  Platform,
+  RequirementEvidence,
+  UserProfile,
+} from '../../shared/types'
+import {
+  decideApplicationAction,
+} from '../../shared/domain/applicationJudgment'
 import {
   extractFlexyHeuristics,
   parseFlexyBudget,
@@ -14,6 +23,11 @@ import { estimateEffortHeuristic } from '../domain/money'
 import { buildAxes, decideRecommendation } from '../domain/recommendation'
 import { AnthropicAiProvider } from './anthropic'
 import { buildFlexyInterestMessage } from './flexyMessage'
+import {
+  buildShortApplicationMessage,
+  buildYoutrustMessage,
+  enforceProposalQuality,
+} from './platformMessage'
 
 export interface ExtractionInput {
   title: string
@@ -46,6 +60,10 @@ export interface DiagnosisInput {
   expectedMonthlyHoursMin?: string | null
   expectedMonthlyHoursMax?: string | null
   requirementEvidences?: RequirementEvidence[]
+  platform?: Platform | string
+  applicationType?: ApplicationType
+  companyName?: string
+  recruiterName?: string
 }
 
 export interface ProposalInput {
@@ -58,6 +76,10 @@ export interface ProposalInput {
   jobUrl?: string
   requirementEvidences?: RequirementEvidence[]
   consultantQuestions?: string[]
+  body?: string
+  companyName?: string
+  recruiterName?: string
+  messageLength?: 'short' | 'long'
 }
 
 export interface ReplyInput {
@@ -228,39 +250,94 @@ function buildProposalFallback(input: ProposalInput): ProposalResult {
   if (input.platform === 'flexy') {
     return buildFlexyInterestMessage(input)
   }
+  if (input.platform === 'youtrust') {
+    return enforceProposalQuality(
+      buildYoutrustMessage({
+        title: input.title,
+        body: input.body,
+        diagnosis: input.diagnosis,
+        extraction: input.extraction,
+        profile: input.profile,
+        companyName: input.companyName,
+        recruiterName: input.recruiterName,
+      }),
+      {
+        title: input.title,
+        body: input.body,
+        diagnosis: input.diagnosis,
+        extraction: input.extraction,
+        profile: input.profile,
+        companyName: input.companyName,
+        recruiterName: input.recruiterName,
+      },
+    )
+  }
+  if (input.platform === 'other' && input.messageLength === 'short') {
+    return enforceProposalQuality(
+      buildShortApplicationMessage({
+        title: input.title,
+        body: input.body,
+        diagnosis: input.diagnosis,
+        extraction: input.extraction,
+        profile: input.profile,
+      }),
+      {
+        title: input.title,
+        body: input.body,
+        diagnosis: input.diagnosis,
+        extraction: input.extraction,
+        profile: input.profile,
+      },
+    )
+  }
   const name = input.profile.name || '応募者'
-  const skills = input.profile.skills.map((s) => s.name).filter(Boolean).slice(0, 5)
+  const skills = input.profile.skills
+    .filter((s) => s.level === '実務')
+    .map((s) => s.name)
+    .filter(Boolean)
+    .slice(0, 5)
   const achievements = input.profile.achievements
     .filter((a) => a.usableInProposal !== false)
     .slice(0, 2)
-  const problem = input.diagnosis.clientIntent?.underlyingProblem || '募集内容の課題解決'
+  const problem =
+    input.diagnosis.clientIntent?.underlyingProblem ||
+    input.extraction.role?.text ||
+    input.title ||
+    '募集内容の課題解決'
   const strategy =
     input.forceStrategy ||
     (achievements.length ? '実績・証拠型' : '進め方明確型')
   const used = achievements.map((a) => a.title)
+  const missing = (input.diagnosis.requirements || []).find(
+    (r) => r.importance === 'required' && r.status === 'missing',
+  )
+  const missLine = missing
+    ? `${missing.requirement}の実務経験はありませんが、類似経験を踏まえて進め方をご提案します。`
+    : ''
 
   const body = [
     `はじめまして。${name}と申します。`,
-    `募集内容を拝見し、${problem}に対して、段階的に進められる提案ができると考え応募しました。`,
+    `「${problem}」に関する募集を拝見し、段階的に進められる提案ができると考え応募しました。`,
     skills.length ? `対応可能な技術は ${skills.join('、')} です。` : '',
     achievements.length
       ? `関連実績として、${achievements.map((a) => `${a.title}${a.result ? `（${a.result}）` : ''}`).join('、')} があります。`
       : '',
+    missLine,
     strategy === '課題解決型'
       ? `課題に対しては、現状のボトルネックを切り分けたうえで、最短で効果が出る範囲から着手します。`
       : strategy === '実績・証拠型'
         ? `近い案件での進め方と成果を踏まえ、同じ品質で進められると考えています。`
         : `進め方としては、①要件の確認 ②小さく動く成果物の提示 ③フィードバック反映 の順で進めます。`,
     `対応可能時間は ${input.profile.availableTimes || '要相談'} です。`,
-    input.diagnosis.preQuestions?.length
-      ? `応募前の確認として、${input.diagnosis.preQuestions.slice(0, 2).join('／')} を伺えれば幸いです。`
+    (input.diagnosis.questionsToConfirm || input.diagnosis.preQuestions)?.length
+      ? `応募前の確認として、${(input.diagnosis.questionsToConfirm || input.diagnosis.preQuestions || []).slice(0, 2).join('／')} を伺えれば幸いです。`
       : '詳細な要件や優先順位を確認できれば、より正確な進め方をご提示できます。',
     'ご検討のほど、よろしくお願いいたします。',
   ]
     .filter(Boolean)
     .join('\n')
 
-  return {
+  const result: ProposalResult = {
     strategy,
     strategyReason:
       input.forceStrategy
@@ -270,13 +347,24 @@ function buildProposalFallback(input: ProposalInput): ProposalResult {
           : '要件整理と段階的な進め方が安心材料になるため',
     body,
     usedAchievements: used,
-    preQuestions: input.diagnosis.preQuestions || [],
-    assumptions: ['募集文に書かれた範囲を対象とする', '大幅な追加要件は再見積り'],
+    preQuestions: input.diagnosis.questionsToConfirm || input.diagnosis.preQuestions || [],
+    assumptions: ['募集文に書かれた範囲を対象とする', '大幅な追加要件は再見積り', 'プロフィール外の経験は記載していない'],
     scopeIn: input.diagnosis.scopeIn?.length ? input.diagnosis.scopeIn : ['募集文に記載の主要成果物'],
     scopeOut: input.diagnosis.scopeOut?.length ? input.diagnosis.scopeOut : ['明記のない保守運用', '追加機能の無償対応'],
-    meetingTopics: ['成功条件の定義', '優先機能', '連絡頻度'],
+    meetingTopics: input.diagnosis.questionsToConfirm?.length
+      ? input.diagnosis.questionsToConfirm
+      : ['成功条件の定義', '優先機能', '連絡頻度'],
     documentType: 'proposal',
+    messageCharacterCount: body.length,
+    evidenceUsed: used,
   }
+  return enforceProposalQuality(result, {
+    title: input.title,
+    body: input.body,
+    diagnosis: input.diagnosis,
+    extraction: input.extraction,
+    profile: input.profile,
+  })
 }
 
 export { buildFlexyInterestMessage } from './flexyMessage'
@@ -319,7 +407,19 @@ function toDiagnosisResult(
   axes: DiagnosisResult['axes'],
   extras?: Partial<DiagnosisResult>,
 ): DiagnosisResult {
+  const app = decideApplicationAction({
+    body: input.body,
+    title: input.title,
+    profile: input.profile,
+    extraction: input.extraction,
+    legacyRecommendation: decision.recommendation,
+    legacyReason: decision.reason,
+    evidences: input.requirementEvidences,
+    applicationType: input.applicationType,
+  })
+
   const preQuestions = [
+    ...app.questionsToConfirm,
     ...decision.selfCheckQuestions,
     ...decision.consultantQuestions,
     ...(input.extraction.unknowns || []).map((u) => `${u}を教えてください`),
@@ -347,6 +447,19 @@ function toDiagnosisResult(
     scopeOut: extras?.scopeOut?.length
       ? extras.scopeOut
       : ['募集文にない追加機能', '無償の長期保守'],
+    sourcePlatform: (input.platform as DiagnosisResult['sourcePlatform']) || undefined,
+    applicationType: input.applicationType,
+    overallScore: app.overallScore,
+    existingLabel: app.judgmentLabel,
+    recommendedAction: app.recommendedAction,
+    applicationPriority: app.applicationPriority,
+    decisionReason: app.decisionReason,
+    matchedExperiences: app.matchedExperiences,
+    requirements: app.requirements,
+    gaps: app.gaps,
+    conditionRisks: app.conditionRisks,
+    questionsToConfirm: app.questionsToConfirm,
+    confidence: app.confidence,
   }
 }
 

@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { BUDGET_TYPES, DEFAULT_FEE_RATES, PLATFORMS } from '#shared/constants'
+import {
+  APPLICATION_TYPES,
+  BUDGET_TYPES,
+  DEFAULT_FEE_RATES,
+  PLATFORMS,
+} from '#shared/constants'
+import { inferPlatformFromText } from '#shared/domain/applicationJudgment'
 import type { JobInput } from '#shared/types'
 
 const props = defineProps<{
@@ -32,7 +38,21 @@ function onPlatformChange(platform: JobInput['platform']) {
       next.feeRatePercent = String(DEFAULT_FEE_RATES.flexy ?? 0)
     }
   }
+  if (platform === 'youtrust' && (!next.applicationType || next.applicationType === 'unknown')) {
+    next.applicationType = 'hear_more'
+  }
   emit('update:modelValue', next)
+}
+
+function maybeInferPlatform() {
+  const inferred = inferPlatformFromText(
+    props.modelValue.title,
+    props.modelValue.body,
+    props.modelValue.url || '',
+  )
+  if (inferred && inferred !== props.modelValue.platform) {
+    onPlatformChange(inferred)
+  }
 }
 
 const ok = computed(() => Boolean(inp.value.title.trim() && inp.value.body.trim()))
@@ -46,7 +66,7 @@ const isFlexy = computed(() => inp.value.platform === 'flexy')
       募集文を貼り付けて、応募すべきか見極めます。
     </p>
 
-    <label class="cb-label">利用サービス</label>
+    <label class="cb-label">募集媒体</label>
     <select
       class="cb-input"
       :value="inp.platform"
@@ -59,32 +79,61 @@ const isFlexy = computed(() => inp.value.platform === 'flexy')
     <input
       class="cb-input"
       :value="inp.title"
-      placeholder="例: Instagram集計の自動化"
+      placeholder="例: 業務システムの改善支援"
       @input="u('title', ($event.target as HTMLInputElement).value)"
+      @blur="maybeInferPlatform"
     >
 
-    <label class="cb-label">募集文 *</label>
+    <label class="cb-label">会社名</label>
+    <input
+      class="cb-input"
+      :value="inp.companyName || ''"
+      placeholder="任意"
+      @input="u('companyName', ($event.target as HTMLInputElement).value)"
+    >
+
+    <label class="cb-label">募集者名（任意）</label>
+    <input
+      class="cb-input"
+      :value="inp.recruiterName || ''"
+      placeholder="任意"
+      @input="u('recruiterName', ($event.target as HTMLInputElement).value)"
+    >
+
+    <label class="cb-label">募集詳細 *</label>
     <textarea
       class="cb-input min-h-[160px] resize-y leading-relaxed"
       rows="8"
       :value="inp.body"
       placeholder="募集文をそのまま貼り付け..."
       @input="u('body', ($event.target as HTMLTextAreaElement).value)"
+      @blur="maybeInferPlatform"
     />
+
+    <label class="cb-label">募集URL（任意）</label>
+    <input
+      class="cb-input"
+      type="url"
+      :value="inp.url || ''"
+      placeholder="https://..."
+      @input="u('url', ($event.target as HTMLInputElement).value)"
+      @blur="maybeInferPlatform"
+    >
+
+    <label class="cb-label">応募形式</label>
+    <select
+      class="cb-input"
+      :value="inp.applicationType || 'unknown'"
+      @change="u('applicationType', ($event.target as HTMLSelectElement).value as JobInput['applicationType'])"
+    >
+      <option v-for="(label, key) in APPLICATION_TYPES" :key="key" :value="key">{{ label }}</option>
+    </select>
 
     <div v-if="isFlexy" class="cb-card mb-3 border border-blue-100 bg-blue-50/40">
       <p class="mb-2 text-[13px] font-bold text-slate-900">FLEXY案件条件</p>
       <p class="mb-2 text-[11px] leading-relaxed text-slate-500">
         月間稼働時間が不明な場合は空欄のままで構いません。週の稼働日数から勝手に時間換算しません。
       </p>
-      <label class="cb-label">案件URL</label>
-      <input
-        class="cb-input"
-        type="url"
-        :value="inp.url || ''"
-        placeholder="https://..."
-        @input="u('url', ($event.target as HTMLInputElement).value)"
-      >
       <div class="grid grid-cols-2 gap-1.5">
         <div>
           <label class="cb-label">想定月間時間・下限</label>

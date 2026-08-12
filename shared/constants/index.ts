@@ -1,9 +1,44 @@
 export const PLATFORMS = {
+  youtrust: 'YouTrust',
   crowdworks: 'クラウドワークス',
   coconala: 'ココナラ',
   lancers: 'ランサーズ',
   flexy: 'FLEXY',
   other: 'その他',
+} as const
+
+export const APPLICATION_TYPES = {
+  standard: '通常応募',
+  casual_talk: 'カジュアル面談',
+  hear_more: '話を聞きたい',
+  unknown: '不明',
+} as const
+
+export const RECOMMENDED_ACTIONS = {
+  apply: { t: '応募する', c: '#16a34a', bg: '#f0fdf4', ic: '✓' },
+  casual_talk: { t: 'カジュアル面談・話を聞きたい', c: '#2563eb', bg: '#eff6ff', ic: '💬' },
+  confirm_conditions: { t: '条件を確認してから判断', c: '#d97706', bg: '#fffbeb', ic: '?' },
+  skip: { t: '見送る', c: '#dc2626', bg: '#fef2f2', ic: '✗' },
+} as const
+
+export const APPLICATION_PRIORITIES = {
+  high: { t: '高', c: '#16a34a' },
+  medium: { t: '中', c: '#d97706' },
+  low: { t: '低', c: '#64748b' },
+} as const
+
+export const REQUIREMENT_MATCH_LABELS = {
+  matched: '経験あり',
+  transferable: '転用可',
+  unverified: '未確認',
+  missing: '不足',
+} as const
+
+export const YOUTRUST_INTEREST_OPTIONS = {
+  content: '募集内容に興味がある',
+  person: '募集している人に興味がある',
+  company: '募集している会社、事業に興味がある',
+  other: 'その他（ほかに話したいテーマがある）',
 } as const
 
 export const REQUIREMENT_EVIDENCE_LABELS = {
@@ -25,12 +60,13 @@ export const STATUSES = {
   draft: { l: '入力中', c: '#94a3b8' },
   extracted: { l: '確認待ち', c: '#64748b' },
   diagnosing: { l: '診断中', c: '#64748b' },
-  review: { l: '判断中', c: '#3b82f6' },
+  review: { l: '検討中', c: '#3b82f6' },
   needs_question: { l: '質問中', c: '#8b5cf6' },
   skipped: { l: '見送り', c: '#94a3b8' },
+  casual_sent: { l: '話を聞きたい送信済み', c: '#6366f1' },
   applied: { l: '応募済み', c: '#6366f1' },
   replied: { l: '返信あり', c: '#0ea5e9' },
-  interview: { l: '面談', c: '#f59e0b' },
+  interview: { l: '面談予定', c: '#f59e0b' },
   won: { l: '受注', c: '#16a34a' },
   working: { l: '作業中', c: '#16a34a' },
   delivered: { l: '納品済み', c: '#059669' },
@@ -78,6 +114,7 @@ export const SKIP_REASONS = [
 ] as const
 
 export const DEFAULT_FEE_RATES: Record<string, number> = {
+  youtrust: 0,
   crowdworks: 20,
   coconala: 22,
   lancers: 20,
@@ -120,6 +157,7 @@ export const PIPELINE_FILTERS = [
   'all',
   'review',
   'skipped',
+  'casual_sent',
   'applied',
   'replied',
   'interview',
@@ -131,11 +169,12 @@ export const PIPELINE_FILTERS = [
 
 export const PIPELINE_FILTER_LABELS: Record<string, string> = {
   all: 'すべて',
-  review: '判断中',
+  review: '検討中',
   skipped: '見送り',
+  casual_sent: '話を聞きたい送信済み',
   applied: '応募済み',
   replied: '返信あり',
-  interview: '面談',
+  interview: '面談予定',
   won: '受注',
   completed: '完了',
   paid: '入金済み',

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ulid } from 'ulid'
-import { STATUSES, SKIP_REASONS, WORK_LOG_CATEGORIES, PLATFORMS, REC } from '#shared/constants'
+import { STATUSES, SKIP_REASONS, WORK_LOG_CATEGORIES, PLATFORMS, REC, APPLICATION_TYPES, RECOMMENDED_ACTIONS } from '#shared/constants'
 import { nextStatuses, requiresReason, totalWorkMinutes, effortVarianceRate, actualHourlyYen } from '#shared/domain/pipeline'
 import type { StatusCode } from '#shared/types'
 
@@ -228,6 +228,23 @@ function copyDraft() {
           <p class="m-0 text-xs text-slate-700">見積標準: {{ item.estimatedLikelyHours != null ? `${item.estimatedLikelyHours}h` : '─' }}</p>
           <p class="m-0 text-xs text-slate-700">見積最大: {{ item.estimatedMaxHours != null ? `${item.estimatedMaxHours}h` : '─' }}</p>
           <p v-if="item.skipReason" class="m-0 text-xs text-slate-700">理由: {{ item.skipReason }}</p>
+        </div>
+        <div class="cb-card">
+          <p class="mb-1 text-[11px] font-semibold text-slate-500">応募情報</p>
+          <p class="m-0 text-xs text-slate-700">媒体: {{ PLATFORMS[item.platform] || item.platform }}</p>
+          <p class="m-0 text-xs text-slate-700">
+            応募形式: {{ item.applicationType ? (APPLICATION_TYPES[item.applicationType] || item.applicationType) : '─' }}
+          </p>
+          <p class="m-0 text-xs text-slate-700">
+            推奨アクション: {{ item.recommendedAction ? (RECOMMENDED_ACTIONS[item.recommendedAction]?.t || item.recommendedAction) : '─' }}
+          </p>
+          <p class="m-0 text-xs text-slate-700">実際のアクション: {{ item.actualAction || '─' }}</p>
+          <p class="m-0 text-xs text-slate-700">応募日時: {{ item.appliedAt ? item.appliedAt.slice(0, 16).replace('T', ' ') : '─' }}</p>
+          <p v-if="item.companyName" class="m-0 text-xs text-slate-700">会社名: {{ item.companyName }}</p>
+        </div>
+        <div v-if="item.generatedMessage" class="cb-card">
+          <p class="mb-1 text-[11px] font-semibold text-slate-500">生成メッセージ</p>
+          <p class="m-0 whitespace-pre-wrap text-xs leading-relaxed text-slate-600">{{ item.generatedMessage }}</p>
         </div>
         <div v-if="item.client" class="cb-card">
           <p class="mb-1 text-[11px] font-semibold text-slate-500">発注者</p>
