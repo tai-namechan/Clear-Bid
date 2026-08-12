@@ -1,5 +1,5 @@
 import { ulid } from 'ulid'
-import { AI_USAGE_LIMITS, STORAGE_KEYS } from '#shared/constants'
+import { AI_USAGE_LIMITS } from '#shared/constants'
 import { calcFinancial } from '#shared/domain/financial'
 import { canTransition, requiresReason, isValidReasonCode } from '#shared/domain/pipeline'
 import {
@@ -26,39 +26,9 @@ import {
   type ReplyRecord,
   type WorkLog,
 } from '#shared/opportunity'
+import { apiFetch } from './useAuth'
 
 type SyncKey = 'profile' | 'pipeline' | 'stats' | 'ai_usage'
-
-async function loadLocal<T>(key: string, fallback: T): Promise<T> {
-  if (!import.meta.client) return fallback
-  try {
-    const raw = localStorage.getItem(key)
-    return raw ? (JSON.parse(raw) as T) : fallback
-  } catch {
-    return fallback
-  }
-}
-
-async function saveLocal<T>(key: string, value: T): Promise<void> {
-  if (!import.meta.client) return
-  try {
-    localStorage.setItem(key, JSON.stringify(value))
-  } catch (e) {
-    console.error(e)
-  }
-}
-
-async function syncPut(key: SyncKey, value: unknown, d1Enabled: Ref<boolean>) {
-  if (!import.meta.client || !d1Enabled.value) return
-  try {
-    await $fetch('/api/sync', {
-      method: 'PUT',
-      body: { key, value },
-    })
-  } catch (e) {
-    console.warn('[sync] put failed, kept local copy', key, e)
-  }
-}
 
 function recomputeStats(items: Opportunity[], base?: AppStats): AppStats {
   const s: AppStats = {
@@ -74,7 +44,7 @@ function recomputeStats(items: Opportunity[], base?: AppStats): AppStats {
     paidTotal: 0,
   }
   for (const it of items) {
-    if (['casual_sent', 'applied', 'replied', 'interview', 'won', 'working', 'delivered', 'completed', 'paid', 'lost'].includes(it.status)) {
+    if (['applied', 'replied', 'interview', 'won', 'working', 'delivered', 'completed', 'paid', 'lost'].includes(it.status)) {
       s.applied += 1
     }
     if (['replied', 'interview', 'won', 'working', 'delivered', 'completed', 'paid'].includes(it.status)) s.replied += 1
@@ -102,94 +72,76 @@ function normalizePipeline(raw: Partial<Opportunity>[]): Opportunity[] {
   )
 }
 
+async function syncPut(key: SyncKey, value: unknown) {
+  if (!import.meta.client) return
+  await apiFetch('/api/sync', {
+    method: 'PUT',
+    body: { key, value },
+  })
+}
+
 export function useClearBidStore() {
   const profile = useState<UserProfile>('cb-profile', () => ({ ...INIT_PROFILE }))
   const pipeline = useState<Opportunity[]>('cb-pipeline', () => [])
   const stats = useState<AppStats>('cb-stats', () => ({ ...INIT_STATS }))
   const usage = useState<AiUsageState>('cb-usage', () => emptyUsage())
   const ready = useState<boolean>('cb-ready', () => false)
-  const d1Enabled = useState<boolean>('cb-d1', () => false)
+  const remoteEnabled = useState<boolean>('cb-remote', () => false)
   const sessionUser = useState<{ id: string; email: string; displayName?: string | null } | null>('cb-user', () => null)
+
+  const resetLocalState = () => {
+    profile.value = { ...INIT_PROFILE }
+    pipeline.value = []
+    stats.value = { ...INIT_STATS }
+    usage.value = emptyUsage()
+    ready.value = false
+    remoteEnabled.value = false
+    sessionUser.value = null
+  }
 
   const init = async () => {
     if (ready.value) return
-
-    // Prefer D1 when bound; otherwise localStorage. Always keep a local cache.
-    let fromD1 = false
-    try {
-      const sync = await $fetch<{
-        mode: string
-        user?: { id: string; email: string; displayName?: string | null }
-        documents?: Partial<Record<SyncKey, unknown>> | null
-      }>('/api/sync')
-      if (sync.mode === 'd1' && sync.documents) {
-        fromD1 = true
-        d1Enabled.value = true
-        sessionUser.value = sync.user || null
-        if (sync.documents.profile) profile.value = normalizeProfile(sync.documents.profile as UserProfile)
-        if (Array.isArray(sync.documents.pipeline)) {
-          pipeline.value = normalizePipeline(sync.documents.pipeline as Partial<Opportunity>[])
-        }
-        if (sync.documents.stats) {
-          const loadedStats = sync.documents.stats as AppStats
-          stats.value = { ...recomputeStats(pipeline.value, loadedStats), diagnosed: loadedStats.diagnosed || 0 }
-        }
-        if (sync.documents.ai_usage) usage.value = sync.documents.ai_usage as AiUsageState
-      }
-    } catch {
-      d1Enabled.value = false
+    if (!import.meta.client) {
+      ready.value = true
+      return
     }
 
-    if (!fromD1) {
-      profile.value = normalizeProfile(await loadLocal(STORAGE_KEYS.PROFILE, { ...INIT_PROFILE }))
-      pipeline.value = normalizePipeline(await loadLocal<Partial<Opportunity>[]>(STORAGE_KEYS.PIPELINE, []))
-      const loadedStats = await loadLocal(STORAGE_KEYS.STATS, { ...INIT_STATS })
-      stats.value = { ...recomputeStats(pipeline.value, loadedStats), diagnosed: loadedStats.diagnosed || 0 }
-      usage.value = await loadLocal(STORAGE_KEYS.AI_USAGE, emptyUsage())
+    const sync = await apiFetch<{
+      mode: string
+      user?: { id: string; email: string; displayName?: string | null }
+      documents?: Partial<Record<SyncKey, unknown>> | null
+    }>('/api/sync')
 
-      // If D1 just became available empty, seed it from local cache once.
-      try {
-        const me = await $fetch<{ persistence: string; user: { id: string; email: string; displayName?: string | null } }>('/api/me')
-        if (me.persistence === 'd1') {
-          d1Enabled.value = true
-          sessionUser.value = me.user
-          await Promise.all([
-            syncPut('profile', profile.value, d1Enabled),
-            syncPut('pipeline', pipeline.value, d1Enabled),
-            syncPut('stats', stats.value, d1Enabled),
-            syncPut('ai_usage', usage.value, d1Enabled),
-          ])
-        }
-      } catch {
-        /* local-only */
-      }
-    } else {
-      await Promise.all([
-        saveLocal(STORAGE_KEYS.PROFILE, profile.value),
-        saveLocal(STORAGE_KEYS.PIPELINE, pipeline.value),
-        saveLocal(STORAGE_KEYS.STATS, stats.value),
-        saveLocal(STORAGE_KEYS.AI_USAGE, usage.value),
-      ])
+    if (sync.mode !== 'supabase') {
+      throw new Error('Supabase が未設定です。環境変数を確認してください。')
     }
 
+    remoteEnabled.value = true
+    sessionUser.value = sync.user || null
+    const docs = sync.documents || {}
+
+    profile.value = normalizeProfile((docs.profile as UserProfile) || INIT_PROFILE)
+    pipeline.value = Array.isArray(docs.pipeline)
+      ? normalizePipeline(docs.pipeline as Partial<Opportunity>[])
+      : []
+    const loadedStats = (docs.stats as AppStats) || INIT_STATS
+    stats.value = { ...recomputeStats(pipeline.value, loadedStats), diagnosed: loadedStats.diagnosed || 0 }
+    usage.value = (docs.ai_usage as AiUsageState) || emptyUsage()
     ready.value = true
   }
 
   const persistPipeline = async (items: Opportunity[]) => {
     pipeline.value = items
-    await saveLocal(STORAGE_KEYS.PIPELINE, items)
     const next = recomputeStats(items, stats.value)
     stats.value = next
-    await saveLocal(STORAGE_KEYS.STATS, next)
-    await syncPut('pipeline', items, d1Enabled)
-    await syncPut('stats', next, d1Enabled)
+    await syncPut('pipeline', items)
+    await syncPut('stats', next)
   }
 
   const saveProfile = async (p: UserProfile) => {
     const normalized = normalizeProfile(p)
     profile.value = normalized
-    await saveLocal(STORAGE_KEYS.PROFILE, normalized)
-    await syncPut('profile', normalized, d1Enabled)
+    await syncPut('profile', normalized)
   }
 
   const savePipeline = async (items: PipelineItem[]) => {
@@ -198,14 +150,12 @@ export function useClearBidStore() {
 
   const saveStats = async (s: AppStats) => {
     stats.value = s
-    await saveLocal(STORAGE_KEYS.STATS, s)
-    await syncPut('stats', s, d1Enabled)
+    await syncPut('stats', s)
   }
 
   const persistUsage = async (u: AiUsageState) => {
     usage.value = u
-    await saveLocal(STORAGE_KEYS.AI_USAGE, u)
-    await syncPut('ai_usage', u, d1Enabled)
+    await syncPut('ai_usage', u)
   }
 
   const assertAiBudget = (op: AiOperation) => {
@@ -337,7 +287,7 @@ export function useClearBidStore() {
       updatedAt: new Date().toISOString().slice(0, 10),
     }
     await upsertOpportunity(updated)
-    if (item.status === 'applied' || item.status === 'casual_sent') {
+    if (item.status === 'applied') {
       return addStatusEvent(id, 'replied', { note: '返信を記録' })
     }
     return updated
@@ -360,59 +310,32 @@ export function useClearBidStore() {
     return updated
   }
 
-  /** Export all app data as a portable JSON backup. */
-  const exportBackup = () => {
-    const draft = import.meta.client ? localStorage.getItem(STORAGE_KEYS.DRAFT_INPUT) : null
-    let draftInput: unknown = null
-    if (draft) {
-      try {
-        draftInput = JSON.parse(draft)
-      } catch {
-        draftInput = null
-      }
-    }
-    return {
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      app: 'clear-bid',
-      profile: profile.value,
-      pipeline: pipeline.value,
-      stats: stats.value,
-      ai_usage: usage.value,
-      draft_input: draftInput,
-    }
-  }
+  const exportBackup = () => ({
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    app: 'clear-bid',
+    profile: profile.value,
+    pipeline: pipeline.value,
+    stats: stats.value,
+    ai_usage: usage.value,
+    draft_input: null,
+  })
 
-  /** Replace local (+ D1 if bound) state from a backup JSON. */
   const importBackup = async (raw: unknown) => {
     const data = raw as {
-      version?: number
       profile?: UserProfile
       pipeline?: Partial<Opportunity>[]
       stats?: AppStats
       ai_usage?: AiUsageState
-      draft_input?: unknown
     }
     if (!data || typeof data !== 'object') throw new Error('バックアップの形式が不正です')
     if (!data.profile && !Array.isArray(data.pipeline)) {
       throw new Error('プロフィールまたは案件データが見つかりません')
     }
-
-    if (data.profile) {
-      await saveProfile(normalizeProfile(data.profile))
-    }
-    if (Array.isArray(data.pipeline)) {
-      await persistPipeline(normalizePipeline(data.pipeline))
-    }
-    if (data.stats) {
-      await saveStats({ ...INIT_STATS, ...data.stats })
-    }
-    if (data.ai_usage) {
-      await persistUsage(data.ai_usage)
-    }
-    if (data.draft_input != null && import.meta.client) {
-      await saveLocal(STORAGE_KEYS.DRAFT_INPUT, data.draft_input)
-    }
+    if (data.profile) await saveProfile(normalizeProfile(data.profile))
+    if (Array.isArray(data.pipeline)) await persistPipeline(normalizePipeline(data.pipeline))
+    if (data.stats) await saveStats({ ...INIT_STATS, ...data.stats })
+    if (data.ai_usage) await persistUsage(data.ai_usage)
   }
 
   return {
@@ -421,9 +344,12 @@ export function useClearBidStore() {
     stats,
     usage,
     ready,
-    d1Enabled,
+    remoteEnabled,
+    /** @deprecated use remoteEnabled */
+    d1Enabled: remoteEnabled,
     sessionUser,
     init,
+    resetLocalState,
     saveProfile,
     savePipeline,
     saveStats,
