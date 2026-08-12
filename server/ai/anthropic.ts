@@ -10,6 +10,7 @@ import {
   type ProposalResult,
   type ReplyAssistResult,
 } from '../../shared/schemas/ai'
+import { decideApplicationAction } from '../../shared/domain/applicationJudgment'
 import { decideRecommendation, buildAxes } from '../domain/recommendation'
 import { estimateEffortHeuristic } from '../domain/money'
 import {
@@ -22,6 +23,49 @@ import {
   type ReplyInput,
 } from './provider'
 import { buildFlexyInterestMessage } from './flexyMessage'
+import {
+  buildShortApplicationMessage,
+  buildYoutrustMessage,
+  enforceProposalQuality,
+} from './platformMessage'
+
+function withApplicationJudgment(
+  input: DiagnosisInput,
+  base: DiagnosisResult,
+  decisionReasonFallback: string,
+): DiagnosisResult {
+  const app = decideApplicationAction({
+    body: input.body,
+    title: input.title,
+    profile: input.profile,
+    extraction: input.extraction,
+    legacyRecommendation: base.recommendation,
+    legacyReason: base.recommendationReason || decisionReasonFallback,
+    evidences: input.requirementEvidences,
+    applicationType: input.applicationType,
+  })
+  const questions = [
+    ...app.questionsToConfirm,
+    ...(base.preQuestions || []),
+  ]
+  return {
+    ...base,
+    sourcePlatform: (input.platform as DiagnosisResult['sourcePlatform']) || base.sourcePlatform,
+    applicationType: input.applicationType ?? base.applicationType,
+    overallScore: app.overallScore,
+    existingLabel: app.judgmentLabel,
+    recommendedAction: app.recommendedAction,
+    applicationPriority: app.applicationPriority,
+    decisionReason: app.decisionReason,
+    matchedExperiences: app.matchedExperiences,
+    requirements: app.requirements,
+    gaps: app.gaps,
+    conditionRisks: app.conditionRisks,
+    questionsToConfirm: app.questionsToConfirm,
+    confidence: app.confidence,
+    preQuestions: [...new Set(questions)].slice(0, 8),
+  }
+}
 
 const MODEL = 'claude-sonnet-4-20250514'
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
@@ -251,15 +295,19 @@ export class AnthropicAiProvider implements AiProvider {
         ...decision.consultantQuestions,
         ...(enriched.preQuestions || []),
       ]
-      const result = {
-        axes: mergedAxes,
-        recommendation: decision.recommendation,
-        recommendationReason: decision.reason,
-        clientIntent: enriched.clientIntent,
-        preQuestions: [...new Set(mergedQuestions)].slice(0, 8),
-        scopeIn: enriched.scopeIn || [],
-        scopeOut: enriched.scopeOut || [],
-      }
+      const result = withApplicationJudgment(
+        input,
+        {
+          axes: mergedAxes,
+          recommendation: decision.recommendation,
+          recommendationReason: decision.reason,
+          clientIntent: enriched.clientIntent,
+          preQuestions: [...new Set(mergedQuestions)].slice(0, 8),
+          scopeIn: enriched.scopeIn || [],
+          scopeOut: enriched.scopeOut || [],
+        },
+        decision.reason,
+      )
       const parsed = DiagnosisResultSchema.safeParse(result)
       if (!parsed.success) throw new Error('Diagnosis schema invalid')
       return parsed.data
@@ -269,24 +317,123 @@ export class AnthropicAiProvider implements AiProvider {
         ...decision.consultantQuestions,
         ...(input.extraction.unknowns || []).map((u) => `${u}を教えてください`),
       ]
-      return {
-        axes,
-        recommendation: decision.recommendation,
-        recommendationReason: decision.reason,
-        clientIntent: {
-          underlyingProblem: '募集文から読み取れる業務課題の解消',
-          selectionPriority: '確実な完遂とコミュニケーション',
-          concerns: '要件の食い違いや納期遅延',
-          evidenceNeeded: '類似実績と進め方の具体性',
+      return withApplicationJudgment(
+        input,
+        {
+          axes,
+          recommendation: decision.recommendation,
+          recommendationReason: decision.reason,
+          clientIntent: {
+            underlyingProblem: '募集文から読み取れる業務課題の解消',
+            selectionPriority: '確実な完遂とコミュニケーション',
+            concerns: '要件の食い違いや納期遅延',
+            evidenceNeeded: '類似実績と進め方の具体性',
+          },
+          preQuestions: [...new Set(preQuestions)].slice(0, 8),
+          scopeIn: input.extraction.deliverables.filter((d) => d.provenance === 'confirmed').map((d) => d.text),
+          scopeOut: ['募集文にない追加機能', '無償の長期保守'],
         },
-        preQuestions: [...new Set(preQuestions)].slice(0, 8),
-        scopeIn: input.extraction.deliverables.filter((d) => d.provenance === 'confirmed').map((d) => d.text),
-        scopeOut: ['募集文にない追加機能', '無償の長期保守'],
-      }
+        decision.reason,
+      )
     }
   }
 
   async generateProposal(input: ProposalInput): Promise<ProposalResult> {
+    const qualityInput = {
+      title: input.title,
+      body: input.body,
+      diagnosis: input.diagnosis,
+      extraction: input.extraction,
+      profile: input.profile,
+      companyName: input.companyName,
+      recruiterName: input.recruiterName,
+    }
+
+    if (input.platform === 'youtrust') {
+      try {
+        const system = `あなたはYouTrust向けの短い応募メッセージライターです。
+必ず JSON オブジェクトのみを返してください。
+スキーマ:
+{
+  "strategy": string,
+  "strategyReason": string,
+  "body": string,
+  "usedAchievements": string[],
+  "preQuestions": string[],
+  "assumptions": string[],
+  "scopeIn": string[],
+  "scopeOut": string[],
+  "meetingTopics": string[],
+  "documentType": "youtrust_message",
+  "recommendedInterestTarget": "content"|"person"|"company"|"other",
+  "messageCharacterCount": number,
+  "evidenceUsed": string[]
+}
+制約:
+- body は改行・記号込みで必ず200字以内。超過禁止。
+- 課題解決型・実績訴求型・スピード保証型の3案は作らない。1案のみ。
+- 募集固有の単語を最低1つ含める。
+- 「強く惹かれました」「魅力を感じました」 alone で構成しない。
+- プロフィールにない技術・実績を追加しない。
+- 不足経験は隠さず必要なら明示。
+- interestAreas は関心として触れてもよいが実務経験扱いしない。`
+
+        const user = JSON.stringify({
+          title: input.title,
+          body: (input.body || '').slice(0, 3000),
+          companyName: input.companyName || null,
+          recruiterName: input.recruiterName || null,
+          diagnosis: {
+            recommendedAction: input.diagnosis.recommendedAction,
+            matchedExperiences: input.diagnosis.matchedExperiences,
+            requirements: input.diagnosis.requirements,
+            gaps: input.diagnosis.gaps,
+            questionsToConfirm: input.diagnosis.questionsToConfirm,
+          },
+          profile: {
+            name: input.profile.name,
+            skills: input.profile.skills,
+            achievements: input.profile.achievements,
+            interestAreas: input.profile.interestAreas,
+            availableTimes: input.profile.availableTimes,
+          },
+        })
+        const text = await callAnthropic(this.apiKey, system, user)
+        let parsed = ProposalResultSchema.safeParse(extractJson(text))
+        if (!parsed.success) throw new Error('Proposal schema invalid')
+        let result = enforceProposalQuality(
+          { ...parsed.data, documentType: 'youtrust_message' },
+          qualityInput,
+        )
+        if ((result.body?.length || 0) > 200) {
+          // 1回だけ短縮再試行
+          const retryUser = JSON.stringify({
+            previous: result.body,
+            maxChars: 200,
+            keepJobTerm: true,
+          })
+          const retryText = await callAnthropic(
+            this.apiKey,
+            '前回の文言を200字以内に短縮した JSON のみ返す。schema は前回と同じ。捏造禁止。',
+            retryUser,
+          )
+          parsed = ProposalResultSchema.safeParse(extractJson(retryText))
+          if (parsed.success) {
+            result = enforceProposalQuality(
+              { ...parsed.data, documentType: 'youtrust_message' },
+              qualityInput,
+            )
+          }
+        }
+        if ((result.body?.length || 0) > 200) {
+          return buildYoutrustMessage(qualityInput)
+        }
+        return result
+      } catch {
+        return buildYoutrustMessage(qualityInput)
+      }
+    }
+
     if (input.platform === 'flexy') {
       try {
         const system = `あなたはFLEXY担当者向けの応募希望メッセージライターです。
@@ -339,6 +486,34 @@ export class AnthropicAiProvider implements AiProvider {
       }
     }
 
+    if (input.platform === 'other' && input.messageLength === 'short') {
+      try {
+        const system = `短い応募メッセージを1つ作る。JSONのみ。
+schema: ProposalResult with documentType short_message。200字前後。捏造禁止。募集固有語を含める。`
+        const text = await callAnthropic(
+          this.apiKey,
+          system,
+          JSON.stringify({
+            title: input.title,
+            diagnosis: input.diagnosis,
+            profile: {
+              name: input.profile.name,
+              skills: input.profile.skills,
+              achievements: input.profile.achievements,
+            },
+          }),
+        )
+        const parsed = ProposalResultSchema.safeParse(extractJson(text))
+        if (!parsed.success) throw new Error('short message invalid')
+        return enforceProposalQuality(
+          { ...parsed.data, documentType: 'short_message' },
+          qualityInput,
+        )
+      } catch {
+        return buildShortApplicationMessage(qualityInput)
+      }
+    }
+
     const system = `あなたはクラウドソーシング向けの提案文ライターです。
 必ず JSON オブジェクトのみを返してください。
 スキーマ:
@@ -352,12 +527,16 @@ export class AnthropicAiProvider implements AiProvider {
   "scopeIn": string[],
   "scopeOut": string[],
   "meetingTopics": string[],
-  "documentType": "proposal"
+  "documentType": "proposal",
+  "evidenceUsed": string[],
+  "messageCharacterCount": number
 }
 制約:
 - 日本語。営業っぽい誇張・虚偽実績禁止。
-- プロフィールにない実績を捏造しない。
-- 400〜800字程度。丁寧だが簡潔。
+- プロフィールにない実績を捏造しない。不足は隠さない。
+- 募集固有の内容を最低1つ含める。
+- 「魅力を感じました」「強く惹かれました」 alone で構成しない。
+- 300〜400字程度を目安。丁寧だが簡潔。
 - forceStrategy があればその型を使う。
 - documentType は proposal。`
 
@@ -372,20 +551,25 @@ export class AnthropicAiProvider implements AiProvider {
         mtgLimit: input.profile.mtgLimit,
         skills: input.profile.skills.filter((s) => s.usableInProposal !== false),
         achievements: input.profile.achievements.filter((a) => a.usableInProposal !== false),
+        interestAreas: input.profile.interestAreas,
       },
     })
-    const text = await callAnthropic(this.apiKey, system, user)
-    const parsed = ProposalResultSchema.safeParse(extractJson(text))
-    if (!parsed.success) throw new Error('Proposal schema invalid')
-    if (input.forceStrategy) {
-      return {
-        ...parsed.data,
-        strategy: input.forceStrategy,
-        strategyReason: `ユーザー指定の「${input.forceStrategy}」で再生成しました`,
-        documentType: 'proposal',
-      }
+    try {
+      const text = await callAnthropic(this.apiKey, system, user)
+      const parsed = ProposalResultSchema.safeParse(extractJson(text))
+      if (!parsed.success) throw new Error('Proposal schema invalid')
+      const base = input.forceStrategy
+        ? {
+            ...parsed.data,
+            strategy: input.forceStrategy,
+            strategyReason: `ユーザー指定の「${input.forceStrategy}」で再生成しました`,
+            documentType: 'proposal' as const,
+          }
+        : { ...parsed.data, documentType: 'proposal' as const }
+      return enforceProposalQuality(base, qualityInput)
+    } catch (e) {
+      throw e
     }
-    return { ...parsed.data, documentType: 'proposal' }
   }
 
   async assistReply(input: ReplyInput): Promise<ReplyAssistResult> {

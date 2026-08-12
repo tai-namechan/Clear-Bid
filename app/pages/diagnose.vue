@@ -40,6 +40,9 @@ const copied = ref(false)
 const evidences = ref<RequirementEvidence[]>([])
 
 const isFlexy = computed(() => inp.value.platform === 'flexy')
+const isYoutrust = computed(() => inp.value.platform === 'youtrust')
+const isOther = computed(() => inp.value.platform === 'other')
+const messageLength = ref<'short' | 'long'>('long')
 const canGenerateProposal = computed(() => {
   if (!isFlexy.value) return true
   if (!evidences.value.length) return true
@@ -224,6 +227,10 @@ async function doDiag() {
         expectedMonthlyHoursMin: inp.value.expectedMonthlyHoursMin,
         expectedMonthlyHoursMax: inp.value.expectedMonthlyHoursMax,
         requirementEvidences: evidences.value,
+        platform: inp.value.platform,
+        applicationType: inp.value.applicationType,
+        companyName: inp.value.companyName,
+        recruiterName: inp.value.recruiterName,
       },
     })
     diag.value = r
@@ -254,7 +261,11 @@ async function doProposal(forceStrategy?: string) {
   if (forceStrategy) regenerating.value = true
   else {
     loading.value = true
-    loadMsg.value = isFlexy.value ? '応募希望メッセージを作成しています...' : '提案文を作成しています...'
+    loadMsg.value = isYoutrust.value
+      ? '応募の一言を作成しています...'
+      : isFlexy.value
+        ? '応募希望メッセージを作成しています...'
+        : '提案文を作成しています...'
   }
   try {
     const r = await $fetch<ProposalResult>('/api/ai/proposal', {
@@ -264,13 +275,17 @@ async function doProposal(forceStrategy?: string) {
         diagnosis: diag.value,
         extraction: ext.value,
         profile: profile.value,
-        forceStrategy,
+        forceStrategy: forceStrategy || undefined,
         platform: inp.value.platform,
         jobUrl: inp.value.url,
         requirementEvidences: evidences.value,
         consultantQuestions: (diag.value.preQuestions || []).filter(
           (q) => !/経験|根拠|本人|必須要件/.test(q),
         ),
+        jobBody: inp.value.body,
+        companyName: inp.value.companyName,
+        recruiterName: inp.value.recruiterName,
+        messageLength: isOther.value ? messageLength.value : undefined,
       },
     })
     proposal.value = r
@@ -279,7 +294,13 @@ async function doProposal(forceStrategy?: string) {
   } catch (e) {
     console.error(e)
     await trackAiFailure('proposal')
-    alert(isFlexy.value ? '応募希望メッセージの生成に失敗しました。' : '提案文の生成に失敗しました。')
+    alert(
+      isYoutrust.value
+        ? '応募の一言の生成に失敗しました。'
+        : isFlexy.value
+          ? '応募希望メッセージの生成に失敗しました。'
+          : '提案文の生成に失敗しました。',
+    )
   } finally {
     loading.value = false
     regenerating.value = false
@@ -296,7 +317,7 @@ function doCopy() {
   }, 2000)
 }
 
-function buildOpportunityBase(status: 'applied' | 'skipped', reason?: string) {
+function buildOpportunityBase(status: 'applied' | 'skipped' | 'casual_sent', reason?: string) {
   const tasks = effort.value?.tasks || []
   const likely = tasks.reduce((s, t) => s + t.likely, 0)
   const max = tasks.reduce((s, t) => s + t.max, 0)
@@ -309,12 +330,14 @@ function buildOpportunityBase(status: 'applied' | 'skipped', reason?: string) {
     createdAt: now,
     recommendation: diag.value?.recommendation,
     recommendationReason: diag.value?.recommendationReason,
-    userDecision: status === 'applied' ? 'applied' : 'skipped',
+    recommendedAction: diag.value?.recommendedAction,
+    userDecision: status === 'skipped' ? 'skipped' : status,
     extraction: ext.value,
     safety: safety.value,
     effort: effort.value,
     axes: diag.value?.axes,
     proposal: proposal.value,
+    diagnosisSnapshot: diag.value,
   }
   return normalizeOpportunity({
     id: ulid(),
@@ -325,12 +348,24 @@ function buildOpportunityBase(status: 'applied' | 'skipped', reason?: string) {
     updatedAt: date,
     body: inp.value.body,
     url: inp.value.url,
+    companyName: inp.value.companyName,
+    recruiterName: inp.value.recruiterName,
+    applicationType: inp.value.applicationType,
     budgetType: inp.value.budgetType,
     budgetMin: inp.value.budgetMin,
     budgetMax: inp.value.budgetMax,
     deadline: inp.value.deadline,
     applicants: inp.value.applicants,
     recommendation: diag.value?.recommendation,
+    recommendedAction: diag.value?.recommendedAction,
+    actualAction:
+      status === 'casual_sent'
+        ? 'casual_talk'
+        : status === 'applied'
+          ? diag.value?.recommendedAction || 'apply'
+          : 'skip',
+    generatedMessage: proposal.value?.body,
+    appliedAt: status === 'skipped' ? undefined : now,
     strategy: proposal.value?.strategy,
     skipReason: reason,
     estimatedLikelyHours: tasks.length ? Math.round(likely * (1 + buf) * 10) / 10 : undefined,
@@ -360,7 +395,14 @@ function buildOpportunityBase(status: 'applied' | 'skipped', reason?: string) {
 }
 
 async function doApply() {
-  await upsertOpportunity(buildOpportunityBase('applied'))
+  const action = diag.value?.recommendedAction
+  const status =
+    action === 'casual_talk' ||
+    inp.value.applicationType === 'casual_talk' ||
+    inp.value.applicationType === 'hear_more'
+      ? 'casual_sent'
+      : 'applied'
+  await upsertOpportunity(buildOpportunityBase(status))
   reset()
   router.push('/pipeline')
 }
@@ -408,11 +450,12 @@ async function doSkip(reason: string) {
     v-else-if="step === 3"
     :diag="diag"
     :is-flexy="isFlexy"
+    :is-youtrust="isYoutrust"
     :extraction="ext"
     :job="inp"
     :evidences="evidences"
     :can-generate="canGenerateProposal"
-    @gen="doProposal"
+    @gen="doProposal()"
     @skip="doSkip('診断結果')"
     @back="step = 2"
   />
@@ -422,9 +465,13 @@ async function doSkip(reason: string) {
     :copied="copied"
     :regenerating="regenerating"
     :is-flexy="isFlexy"
+    :is-youtrust="isYoutrust"
+    :is-other="isOther"
+    :message-length="messageLength"
     @copy="doCopy"
     @apply="doApply"
     @regenerate="doProposal"
+    @update:message-length="(v) => { messageLength = v }"
     @back="step = 3"
   />
 </template>

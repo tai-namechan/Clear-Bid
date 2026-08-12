@@ -74,7 +74,7 @@ function recomputeStats(items: Opportunity[], base?: AppStats): AppStats {
     paidTotal: 0,
   }
   for (const it of items) {
-    if (['applied', 'replied', 'interview', 'won', 'working', 'delivered', 'completed', 'paid', 'lost'].includes(it.status)) {
+    if (['casual_sent', 'applied', 'replied', 'interview', 'won', 'working', 'delivered', 'completed', 'paid', 'lost'].includes(it.status)) {
       s.applied += 1
     }
     if (['replied', 'interview', 'won', 'working', 'delivered', 'completed', 'paid'].includes(it.status)) s.replied += 1
@@ -337,7 +337,7 @@ export function useClearBidStore() {
       updatedAt: new Date().toISOString().slice(0, 10),
     }
     await upsertOpportunity(updated)
-    if (item.status === 'applied') {
+    if (item.status === 'applied' || item.status === 'casual_sent') {
       return addStatusEvent(id, 'replied', { note: '返信を記録' })
     }
     return updated

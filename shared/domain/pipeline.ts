@@ -7,9 +7,10 @@ const ALLOWED: Record<StatusCode, StatusCode[]> = {
   draft: ['extracted', 'skipped', 'cancelled'],
   extracted: ['diagnosing', 'review', 'skipped'],
   diagnosing: ['review', 'skipped'],
-  review: ['needs_question', 'skipped', 'applied'],
-  needs_question: ['review', 'skipped', 'applied'],
+  review: ['needs_question', 'skipped', 'casual_sent', 'applied'],
+  needs_question: ['review', 'skipped', 'casual_sent', 'applied'],
   skipped: [],
+  casual_sent: ['replied', 'interview', 'won', 'lost', 'cancelled', 'applied'],
   applied: ['replied', 'interview', 'won', 'lost', 'cancelled'],
   replied: ['interview', 'won', 'lost', 'needs_question', 'cancelled'],
   interview: ['won', 'lost', 'cancelled'],
@@ -67,7 +68,7 @@ export type NextAction =
 export function buildNextActions(items: Opportunity[]): NextAction[] {
   const actions: NextAction[] = []
   for (const it of items) {
-    if (it.status === 'applied') {
+    if (it.status === 'applied' || it.status === 'casual_sent') {
       actions.push({
         type: 'reply_wait',
         label: '返信結果を記録',

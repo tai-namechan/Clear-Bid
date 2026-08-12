@@ -1,11 +1,20 @@
 <script setup lang="ts">
-import { AXIS_LABELS, RATINGS, REC, REQUIREMENT_EVIDENCE_LABELS } from '#shared/constants'
+import {
+  APPLICATION_PRIORITIES,
+  AXIS_LABELS,
+  RATINGS,
+  REC,
+  RECOMMENDED_ACTIONS,
+  REQUIREMENT_EVIDENCE_LABELS,
+  REQUIREMENT_MATCH_LABELS,
+} from '#shared/constants'
 import type { DiagnosisResult, ExtractionResult } from '#shared/schemas/ai'
 import type { JobInput, RequirementEvidence } from '#shared/types'
 
 const props = defineProps<{
   diag: DiagnosisResult | null
   isFlexy?: boolean
+  isYoutrust?: boolean
   extraction?: ExtractionResult | null
   job?: JobInput | null
   evidences?: RequirementEvidence[]
@@ -16,9 +25,28 @@ defineEmits<{ gen: []; skip: []; back: [] }>()
 const selfChecks = computed(() =>
   (props.diag?.preQuestions || []).filter((q) => /経験|根拠|本人|必須要件/.test(q)),
 )
-const consultantChecks = computed(() =>
-  (props.diag?.preQuestions || []).filter((q) => !/経験|根拠|本人|必須要件/.test(q)),
-)
+const consultantChecks = computed(() => {
+  const qs = props.diag?.questionsToConfirm?.length
+    ? props.diag.questionsToConfirm
+    : (props.diag?.preQuestions || []).filter((q) => !/経験|根拠|本人|必須要件/.test(q))
+  return qs.slice(0, 3)
+})
+
+const actionKey = computed(() => props.diag?.recommendedAction || null)
+const actionMeta = computed(() => {
+  if (!actionKey.value) return null
+  return RECOMMENDED_ACTIONS[actionKey.value] || null
+})
+const priorityMeta = computed(() => {
+  const p = props.diag?.applicationPriority
+  return p ? APPLICATION_PRIORITIES[p] : null
+})
+
+const generateLabel = computed(() => {
+  if (props.isYoutrust) return '応募の一言を作る'
+  if (props.isFlexy) return '応募希望メッセージを作る'
+  return '提案文を作る'
+})
 </script>
 
 <template>
@@ -32,29 +60,100 @@ const consultantChecks = computed(() =>
     </template>
 
     <template v-else>
-      <div
-        class="cb-card mb-2.5"
-        :style="{
-          background: (REC[diag.recommendation] || REC.question).bg,
-          border: `1.5px solid ${(REC[diag.recommendation] || REC.question).c}`,
-        }"
-      >
-        <div class="flex items-center gap-2">
-          <div
-            class="flex h-8 w-8 items-center justify-center rounded-full"
-            :style="{ background: (REC[diag.recommendation] || REC.question).c + '20' }"
-          >
-            <span
-              class="text-base font-extrabold"
-              :style="{ color: (REC[diag.recommendation] || REC.question).c }"
-            >{{ (REC[diag.recommendation] || REC.question).ic }}</span>
+      <div class="cb-card mb-2.5">
+        <p class="mb-1.5 text-[11px] font-semibold text-slate-500">応募判断</p>
+        <div
+          v-if="actionMeta"
+          class="mb-2 rounded-xl p-3"
+          :style="{ background: actionMeta.bg, border: `1.5px solid ${actionMeta.c}` }"
+        >
+          <div class="flex items-center gap-2">
+            <span class="text-base font-extrabold" :style="{ color: actionMeta.c }">{{ actionMeta.ic }}</span>
+            <p class="m-0 text-base font-extrabold" :style="{ color: actionMeta.c }">{{ actionMeta.t }}</p>
           </div>
-          <p
-            class="m-0 text-base font-extrabold"
-            :style="{ color: (REC[diag.recommendation] || REC.question).c }"
-          >{{ (REC[diag.recommendation] || REC.question).t }}</p>
         </div>
-        <p class="mt-2 text-[13px] leading-relaxed text-slate-700">{{ diag.recommendationReason }}</p>
+        <div class="mb-2 grid grid-cols-2 gap-2">
+          <div class="rounded-lg bg-slate-50 p-2">
+            <p class="m-0 text-[10px] text-slate-500">応募優先度</p>
+            <p class="m-0 text-sm font-bold" :style="{ color: priorityMeta?.c || '#64748b' }">
+              {{ priorityMeta?.t || '—' }}
+            </p>
+          </div>
+          <div class="rounded-lg bg-slate-50 p-2">
+            <p class="m-0 text-[10px] text-slate-500">総合スコア</p>
+            <p class="m-0 text-sm font-bold text-slate-800">
+              {{ diag.overallScore != null ? diag.overallScore : '—' }}
+            </p>
+          </div>
+          <div class="rounded-lg bg-slate-50 p-2">
+            <p class="m-0 text-[10px] text-slate-500">判定ラベル</p>
+            <p class="m-0 text-sm font-bold text-slate-800">{{ diag.existingLabel || '—' }}</p>
+          </div>
+          <div
+            class="rounded-lg p-2"
+            :style="{
+              background: (REC[diag.recommendation] || REC.question).bg,
+            }"
+          >
+            <p class="m-0 text-[10px] text-slate-500">従来推奨</p>
+            <p
+              class="m-0 text-sm font-bold"
+              :style="{ color: (REC[diag.recommendation] || REC.question).c }"
+            >
+              {{ (REC[diag.recommendation] || REC.question).t }}
+            </p>
+          </div>
+        </div>
+        <p class="m-0 text-[13px] leading-relaxed text-slate-700">
+          {{ diag.decisionReason || diag.recommendationReason }}
+        </p>
+      </div>
+
+      <div v-if="diag.matchedExperiences?.length" class="cb-card mb-2">
+        <p class="mb-1.5 text-[11px] font-semibold text-slate-500">経験との接点</p>
+        <div
+          v-for="(m, i) in diag.matchedExperiences.slice(0, 3)"
+          :key="i"
+          class="mb-1.5 border-t border-slate-100 pt-1.5"
+        >
+          <p class="m-0 text-xs font-semibold text-slate-800">{{ m.text }}</p>
+          <p class="m-0 text-[11px] text-slate-500">根拠: {{ m.evidenceSource }}</p>
+        </div>
+      </div>
+
+      <div v-if="diag.gaps?.length || diag.conditionRisks?.length" class="cb-card mb-2 border-l-[3px] border-l-amber-500">
+        <p class="mb-1 text-[11px] font-semibold text-amber-700">足りない点</p>
+        <p
+          v-for="(g, i) in (diag.gaps || []).slice(0, 6)"
+          :key="`g-${i}`"
+          class="my-1 text-xs leading-snug text-slate-700"
+        >• {{ g }}</p>
+        <p
+          v-for="(r, i) in (diag.conditionRisks || []).slice(0, 4)"
+          :key="`r-${i}`"
+          class="my-1 text-xs leading-snug text-slate-700"
+        >• {{ r.risk }}</p>
+      </div>
+
+      <div v-if="diag.requirements?.length" class="cb-card mb-2">
+        <p class="mb-1.5 text-[11px] font-semibold text-slate-500">必須・歓迎要件の分類</p>
+        <div
+          v-for="(req, i) in diag.requirements"
+          :key="i"
+          class="mb-2 border-t border-slate-100 pt-1.5"
+        >
+          <p class="m-0 text-xs font-semibold text-slate-800">
+            {{ req.requirement }}
+            <span class="ml-1 text-[10px] font-normal text-slate-400">
+              {{ req.importance === 'required' ? '必須' : '歓迎' }}
+            </span>
+          </p>
+          <p class="m-0 mt-0.5 text-[11px] text-slate-600">
+            判定: {{ REQUIREMENT_MATCH_LABELS[req.status] || req.status }}
+          </p>
+          <p class="m-0 text-[11px] text-slate-600">根拠: {{ req.reason }}</p>
+          <p class="m-0 text-[11px] text-slate-500">扱い: {{ req.howToHandle }}</p>
+        </div>
       </div>
 
       <div v-if="isFlexy" class="cb-card mb-2">
@@ -96,9 +195,7 @@ const consultantChecks = computed(() =>
       </div>
 
       <div v-if="consultantChecks.length" class="cb-card mb-2 border-l-[3px] border-l-violet-500">
-        <p class="mb-1 text-[11px] font-semibold text-violet-600">
-          {{ isFlexy ? 'FLEXY担当者への確認' : '応募前に確認すべきこと' }}
-        </p>
+        <p class="mb-1 text-[11px] font-semibold text-violet-600">面談・応募前に確認すること</p>
         <p v-for="(q, i) in consultantChecks" :key="i" class="my-1 text-xs leading-snug text-slate-700">• {{ q }}</p>
       </div>
 
@@ -144,18 +241,12 @@ const consultantChecks = computed(() =>
         :disabled="canGenerate === false"
         @click="$emit('gen')"
       >
-        {{ isFlexy ? '応募希望メッセージを作る' : '提案文を作る' }}
+        {{ generateLabel }}
       </button>
       <p v-if="canGenerate === false" class="mt-2 text-center text-[11px] text-amber-600">
         必須要件の経験有無を確認すると、実績を誇張せず応募文を作れます。
       </p>
-      <button
-        v-if="diag.recommendation === 'skip'"
-        class="cb-outline-btn"
-        @click="$emit('skip')"
-      >
-        見送る
-      </button>
+      <button class="cb-outline-btn" @click="$emit('skip')">見送りとして記録</button>
     </template>
   </div>
 </template>

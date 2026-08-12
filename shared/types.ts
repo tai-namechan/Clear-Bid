@@ -1,6 +1,14 @@
-export type Platform = 'crowdworks' | 'coconala' | 'lancers' | 'flexy' | 'other'
+export type Platform = 'youtrust' | 'crowdworks' | 'coconala' | 'lancers' | 'flexy' | 'other'
 export type BudgetType = 'fixed' | 'hourly' | 'monthly' | 'performance' | 'unknown'
 export type EngagementType = 'project' | 'ongoing' | 'unknown'
+export type ApplicationType = 'standard' | 'casual_talk' | 'hear_more' | 'unknown'
+export type RecommendedAction = 'apply' | 'casual_talk' | 'confirm_conditions' | 'skip'
+export type ApplicationPriority = 'high' | 'medium' | 'low'
+export type JudgmentLabel = '攻め時' | '様子見' | '見送り'
+export type RequirementMatchStatus = 'matched' | 'transferable' | 'unverified' | 'missing'
+export type RequirementImportance = 'required' | 'preferred'
+export type YoutrustInterestTarget = 'content' | 'person' | 'company' | 'other'
+
 export type StatusCode =
   | 'draft'
   | 'extracted'
@@ -8,6 +16,7 @@ export type StatusCode =
   | 'review'
   | 'needs_question'
   | 'skipped'
+  | 'casual_sent'
   | 'applied'
   | 'replied'
   | 'interview'
@@ -36,6 +45,24 @@ export interface RequirementEvidence {
   sourceQuote: string
 }
 
+export interface RequirementAssessment {
+  requirement: string
+  importance: RequirementImportance
+  status: RequirementMatchStatus
+  reason: string
+  howToHandle: string
+}
+
+export interface MatchedExperience {
+  text: string
+  evidenceSource: string
+}
+
+export interface ConditionRisk {
+  risk: string
+  evidence: string
+}
+
 export interface ProfileSkill {
   id?: string
   name: string
@@ -55,6 +82,12 @@ export interface ProfileAchievement {
   usableInProposal?: boolean
 }
 
+export interface InterestAreas {
+  technologies: string[]
+  companies: string[]
+  domains: string[]
+}
+
 export interface UserProfile {
   name: string
   bio: string
@@ -67,6 +100,8 @@ export interface UserProfile {
   skills: ProfileSkill[]
   achievements: ProfileAchievement[]
   ngConditions: string[]
+  /** 関心のある技術・企業・領域（スキルマッチ加点には使わない） */
+  interestAreas: InterestAreas
   platform: Platform
   feeRate: number
 }
@@ -86,6 +121,12 @@ export interface JobInput {
   body: string
   url?: string
   sourceJobId?: string
+  /** 会社名 */
+  companyName?: string
+  /** 募集者名（任意） */
+  recruiterName?: string
+  /** 応募形式 */
+  applicationType?: ApplicationType
   budgetType: BudgetType
   budgetMin: string
   budgetMax: string
@@ -135,6 +176,7 @@ export const INIT_PROFILE: UserProfile = {
   skills: [],
   achievements: [],
   ngConditions: ['常時対応必須', '仮払い前作業'],
+  interestAreas: { technologies: [], companies: [], domains: [] },
   platform: 'crowdworks',
   feeRate: 20,
 }
@@ -157,6 +199,9 @@ export const INIT_JOB_INPUT: JobInput = {
   title: '',
   body: '',
   url: '',
+  companyName: '',
+  recruiterName: '',
+  applicationType: 'unknown',
   budgetType: 'fixed',
   budgetMin: '',
   budgetMax: '',
@@ -174,13 +219,39 @@ export const INIT_JOB_INPUT: JobInput = {
   feeRatePercent: '',
 }
 
-const VALID_PLATFORMS = new Set<Platform>(['crowdworks', 'coconala', 'lancers', 'flexy', 'other'])
+const VALID_PLATFORMS = new Set<Platform>([
+  'youtrust',
+  'crowdworks',
+  'coconala',
+  'lancers',
+  'flexy',
+  'other',
+])
 const VALID_ENGAGEMENT = new Set<EngagementType>(['project', 'ongoing', 'unknown'])
 const VALID_BUDGET = new Set<BudgetType>(['fixed', 'hourly', 'monthly', 'performance', 'unknown'])
+const VALID_APPLICATION_TYPE = new Set<ApplicationType>([
+  'standard',
+  'casual_talk',
+  'hear_more',
+  'unknown',
+])
+
+function normalizeInterestAreasField(raw: unknown): InterestAreas {
+  const empty: InterestAreas = { technologies: [], companies: [], domains: [] }
+  if (!raw || typeof raw !== 'object') return empty
+  const o = raw as Record<string, unknown>
+  const list = (v: unknown) =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').map((x) => x.trim()).filter(Boolean) : []
+  return {
+    technologies: list(o.technologies),
+    companies: list(o.companies),
+    domains: list(o.domains),
+  }
+}
 
 /** 旧 localStorage / D1 プロフィールを後方互換で正規化 */
 export function normalizeProfile(raw: Partial<UserProfile> | null | undefined): UserProfile {
-  const base = { ...INIT_PROFILE }
+  const base = { ...INIT_PROFILE, interestAreas: { technologies: [], companies: [], domains: [] } }
   if (!raw || typeof raw !== 'object') return base
   const platform = VALID_PLATFORMS.has(raw.platform as Platform)
     ? (raw.platform as Platform)
@@ -200,6 +271,7 @@ export function normalizeProfile(raw: Partial<UserProfile> | null | undefined): 
     skills: Array.isArray(raw.skills) ? raw.skills : [],
     achievements: Array.isArray(raw.achievements) ? raw.achievements : [],
     ngConditions: Array.isArray(raw.ngConditions) ? raw.ngConditions : base.ngConditions,
+    interestAreas: normalizeInterestAreasField(raw.interestAreas),
     feeRate: Number.isFinite(Number(raw.feeRate)) ? Number(raw.feeRate) : base.feeRate,
   }
 }
@@ -219,15 +291,21 @@ export function normalizeJobInput(raw: Partial<JobInput> | null | undefined): Jo
     : platform === 'flexy'
       ? 'ongoing'
       : base.engagementType
+  const applicationType = VALID_APPLICATION_TYPE.has(raw.applicationType as ApplicationType)
+    ? (raw.applicationType as ApplicationType)
+    : base.applicationType
   return {
     ...base,
     ...raw,
     platform,
     budgetType,
     engagementType,
+    applicationType,
     title: typeof raw.title === 'string' ? raw.title : '',
     body: typeof raw.body === 'string' ? raw.body : '',
     url: typeof raw.url === 'string' ? raw.url : '',
+    companyName: typeof raw.companyName === 'string' ? raw.companyName : '',
+    recruiterName: typeof raw.recruiterName === 'string' ? raw.recruiterName : '',
     budgetMin: raw.budgetMin != null ? String(raw.budgetMin) : '',
     budgetMax: raw.budgetMax != null ? String(raw.budgetMax) : '',
     deadline: typeof raw.deadline === 'string' ? raw.deadline : '',
