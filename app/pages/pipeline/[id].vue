@@ -3,6 +3,7 @@ import { ulid } from 'ulid'
 import { STATUSES, SKIP_REASONS, WORK_LOG_CATEGORIES, PLATFORMS, REC, APPLICATION_TYPES, RECOMMENDED_ACTIONS } from '#shared/constants'
 import { nextStatuses, requiresReason, totalWorkMinutes, effortVarianceRate, actualHourlyYen } from '#shared/domain/pipeline'
 import type { StatusCode } from '#shared/types'
+import { apiFetch } from '~/composables/useAuth'
 
 const route = useRoute()
 const router = useRouter()
@@ -128,7 +129,7 @@ async function submitReply() {
   }
   replyBusy.value = true
   try {
-    const assist = await $fetch<{
+    const assist = await apiFetch<{
       draftReply: string
       needsReestimate: boolean
       conditionChanges: string[]

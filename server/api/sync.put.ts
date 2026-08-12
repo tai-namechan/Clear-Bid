@@ -1,7 +1,6 @@
 import { z } from 'zod'
 import { requireUser } from '../utils/auth'
-import { hasDb, useDb } from '../utils/db'
-import { putDocument, type DocumentKey } from '../repositories/documents'
+import { putDocument } from '../repositories/documents'
 import { createErrorBody } from '../utils/errors'
 
 const BodySchema = z.object({
@@ -11,16 +10,19 @@ const BodySchema = z.object({
 
 export default defineEventHandler(async (event) => {
   const user = requireUser(event)
-  if (!hasDb(event)) {
+  const config = useRuntimeConfig(event)
+  if (!config.public.supabaseUrl || !config.public.supabaseAnonKey) {
     setResponseStatus(event, 503)
-    return createErrorBody({ code: 'D1_UNAVAILABLE', message: 'D1 is not bound; using localStorage' })
+    return createErrorBody({ code: 'SUPABASE_UNAVAILABLE', message: 'Supabase is not configured' })
   }
+
   const body = BodySchema.safeParse(await readBody(event))
   if (!body.success) {
     setResponseStatus(event, 400)
     return createErrorBody({ code: 'VALIDATION_ERROR', message: 'Invalid sync payload' })
   }
-  const db = useDb(event)
-  await putDocument(db, user.id, body.data.key as DocumentKey, body.data.value)
+
+  // Scope is always requireUser().id — never body.userId
+  await putDocument(user.id, body.data.key, body.data.value, event.context.accessToken)
   return { ok: true, key: body.data.key }
 })

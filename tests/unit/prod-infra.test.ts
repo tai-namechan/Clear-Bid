@@ -57,13 +57,12 @@ describe('ResilientAiProvider', () => {
   })
 })
 
-describe('Access config expectations', () => {
+describe('env config expectations', () => {
   it('documents the required env keys in .env.example', async () => {
     const fs = await import('node:fs/promises')
     const env = await fs.readFile(new URL('../../.env.example', import.meta.url), 'utf8')
     expect(env).toContain('ANTHROPIC_API_KEY')
-    expect(env).toContain('CF_ACCESS_TEAM_DOMAIN')
-    expect(env).toContain('CF_ACCESS_AUD')
+    expect(env).toContain('NUXT_PUBLIC_SUPABASE_URL')
     expect(env).toContain('AUTH_BYPASS')
   })
 })

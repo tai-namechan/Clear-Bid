@@ -1,16 +1,21 @@
 import { requireUser } from '../utils/auth'
-import { hasDb, useDb } from '../utils/db'
 import { getAllDocuments } from '../repositories/documents'
 
 export default defineEventHandler(async (event) => {
   const user = requireUser(event)
-  if (!hasDb(event)) {
-    return { mode: 'local', user, documents: null }
+  const config = useRuntimeConfig(event)
+  const configured = Boolean(config.public.supabaseUrl && config.public.supabaseAnonKey)
+  if (!configured) {
+    setResponseStatus(event, 503)
+    return {
+      mode: 'unconfigured',
+      user,
+      documents: null,
+    }
   }
-  const db = useDb(event)
-  const documents = await getAllDocuments(db, user.id)
+  const documents = await getAllDocuments(user.id, event.context.accessToken)
   return {
-    mode: 'd1',
+    mode: 'supabase',
     user: {
       id: user.id,
       email: user.email,

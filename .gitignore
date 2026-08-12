@@ -1,5 +1,6 @@
 # Nuxt dev/build outputs
 .output
+.vercel
 .data
 .nuxt
 .nitro
@@ -26,3 +27,4 @@ logs
 # Wrangler local state
 .wrangler
 .dev.vars
+.vercel

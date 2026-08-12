@@ -167,49 +167,31 @@ PCの Clear Bid で入れてきた案件・プロフィールは、移行中に�
 2. 実装PRで渡される SQL を貼って **Run**
 3. 左メニュー **Table Editor** で表ができていることを確認
 
-> SQL 自体はコード実装とセットで用意します。このマニュアルの段階では「置く場所は SQL Editor」と覚えておけばOKです。
+> 実行する SQL はリポジトリの `supabase/migrations/20260812_user_documents_rls.sql` です。中身をコピーして Run。
 
 ---
 
-## 6. コード側の切り替え（実装作業）
+## 6. コード側の切り替え（実装済み）
 
-ここはアプリの中身を変える作業です。Cursor エージェントに頼む想定のチェックリストです。
+アプリ側の付け替えは完了しています。
 
-### やること一覧
+- Cloudflare Access → **Supabase Auth**（`/login`、Email/Password）
+- D1 / localStorage → **Supabase `user_documents` + RLS**
+- デプロイ preset → **Vercel**
+- SQL ファイル: `supabase/migrations/20260812_user_documents_rls.sql`
 
-- [ ] Cloudflare Access 認証 → **Supabase Auth** に置換
-- [ ] D1 `user_documents` 同期 → **Supabase テーブル** に置換
-- [ ] `wrangler` / `cloudflare_module` 前提のビルド → **Vercel（Node）** 向けに戻す
-- [ ] `.env.example` を Supabase / Vercel 用に更新
-- [ ] バックアップ JSON の取り込みが新DBでも動くことを確認
-- [ ] Cloudflare 用ファイル（`wrangler.jsonc` 等）を削除または無効化
-
-### 環境変数（ローカル `.env` のイメージ）
+### 環境変数（ローカル `.env`）
 
 ```bash
-# AI（いまと同じ）
 AI_PROVIDER=auto
 ANTHROPIC_API_KEY=sk-ant-...
 
-# Supabase
 NUXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NUXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-NUXT_SUPABASE_SERVICE_ROLE_KEY=eyJ...   # サーバーのみ
+NUXT_SUPABASE_SERVICE_ROLE_KEY=eyJ...
 
-# 自分だけ許可（例）
+# 任意: 空なら認証済みユーザー全員OK
 ALLOWED_EMAIL=you@example.com
-```
-
-### エージェントへの頼み方（コピペ用）
-
-```text
-Clear Bid を Cloudflare (D1/Access/Workers) から
-Vercel + Supabase に付け替えて。
-- Auth は Supabase（許可メールは自分だけ）
-- データは profile/pipeline/stats/ai_usage を永続化
-- 既存のバックアップ JSON 取り込みは残す
-- wrangler / D1 / Access 関連は削除
-- 手順は docs/manual/supabase-vercel-migration.md に合わせて
 ```
 
 ---

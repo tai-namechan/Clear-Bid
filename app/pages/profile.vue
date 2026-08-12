@@ -4,7 +4,9 @@ import type { UserProfile } from '#shared/types'
 import { AI_USAGE_LIMITS } from '#shared/constants'
 import { currentPeriod } from '#shared/domain/usage'
 
-const { profile, saveProfile, usage, d1Enabled, sessionUser, exportBackup, importBackup, pipeline } = useClearBidStore()
+const { profile, saveProfile, usage, remoteEnabled, sessionUser, exportBackup, importBackup, pipeline, resetLocalState } = useClearBidStore()
+const { signOut } = useAuth()
+const router = useRouter()
 const p = ref<UserProfile>({ ...profile.value })
 const ok = ref(false)
 const ns = ref('')
@@ -163,6 +165,12 @@ async function onPasteImport() {
   } catch (e) {
     backupError.value = e instanceof Error ? e.message : 'JSON の形式が不正です'
   }
+}
+
+async function onLogout() {
+  resetLocalState()
+  await signOut()
+  await router.push('/login')
 }
 </script>
 
@@ -337,9 +345,10 @@ async function onPasteImport() {
     <section class="mb-4">
       <p class="mb-2 text-[13px] font-bold text-slate-900">接続状態</p>
       <div class="cb-card mb-0 text-xs text-slate-600">
-        <p class="m-0">保存先: {{ d1Enabled ? 'Cloudflare D1（+ 端末キャッシュ）' : 'この端末の localStorage' }}</p>
+        <p class="m-0">保存先: {{ remoteEnabled ? 'Supabase（ユーザー分離 + RLS）' : '未接続' }}</p>
         <p v-if="sessionUser" class="m-0 mt-1">ログイン: {{ sessionUser.email }}</p>
-        <p v-else class="m-0 mt-1 text-slate-400">未同期（ローカル利用）</p>
+        <p v-else class="m-0 mt-1 text-slate-400">未ログイン</p>
+        <button class="cb-outline-btn mt-2" type="button" @click="onLogout">ログアウト</button>
       </div>
     </section>
 

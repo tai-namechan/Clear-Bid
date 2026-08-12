@@ -11,14 +11,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
-    "db:migrate:local": "wrangler d1 migrations apply clear-bid --local",
-    "db:migrate:remote": "wrangler d1 migrations apply clear-bid --remote",
-    "deploy": "pnpm build && wrangler deploy --config .output/server/wrangler.json",
     "typecheck": "nuxt typecheck"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
     "drizzle-orm": "^0.44.2",
-    "jose": "^6.2.4",
     "nuxt": "^4.5.0",
     "ulid": "^3.0.0",
     "vue": "^3.5.13",
@@ -26,15 +23,13 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260724.1",
     "@nuxt/test-utils": "^3.19.1",
     "@nuxtjs/tailwindcss": "^6.14.0",
     "@vue/test-utils": "^2.4.6",
     "drizzle-kit": "^0.31.4",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4",
-    "vue-tsc": "^2.2.10",
-    "wrangler": "^4.114.0"
+    "vue-tsc": "^2.2.10"
   },
   "packageManager": "pnpm@11.17.0"
 }
