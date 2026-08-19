@@ -203,7 +203,7 @@ function copyDraft() {
         <span v-if="item.strategy"> · {{ item.strategy }}</span>
       </p>
 
-      <div class="mb-3 flex gap-1 overflow-x-auto pb-1">
+      <div class="mb-4 flex gap-1 overflow-x-auto pb-1 lg:flex-wrap">
         <button
           v-for="t in [
             ['overview', '概要'],
@@ -214,7 +214,7 @@ function copyDraft() {
             ['money', '金額'],
           ] as const"
           :key="t[0]"
-          class="whitespace-nowrap rounded-2xl px-3 py-1.5 text-[11px]"
+          class="whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] lg:text-xs"
           :class="tab === t[0] ? 'bg-slate-900 font-semibold text-white' : 'border border-slate-200 bg-white text-slate-500'"
           @click="tab = t[0]"
         >
@@ -222,7 +222,7 @@ function copyDraft() {
         </button>
       </div>
 
-      <div v-if="tab === 'overview'" class="space-y-2">
+      <div v-if="tab === 'overview'" class="cb-grid-2">
         <div class="cb-card">
           <p class="mb-1 text-[11px] font-semibold text-slate-500">基本</p>
           <p class="m-0 text-xs text-slate-700">予算下限: {{ item.budgetMin ? `¥${Number(item.budgetMin).toLocaleString()}` : '─' }}</p>
@@ -258,7 +258,7 @@ function copyDraft() {
         </div>
       </div>
 
-      <div v-else-if="tab === 'status'">
+      <div v-else-if="tab === 'status'" class="lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
         <div v-if="availableNext.length" class="cb-card mb-2">
           <p class="mb-2 text-[11px] font-semibold text-slate-500">状態を更新</p>
           <label class="cb-label">次のステータス</label>
@@ -279,6 +279,7 @@ function copyDraft() {
           <button class="cb-cta" @click="submitStatus">状態を記録する</button>
         </div>
         <div v-else class="cb-card mb-2 text-xs text-slate-500">これ以上の遷移はありません（終端ステータス）。</div>
+        <div>
         <div v-for="ev in item.events" :key="ev.id" class="cb-card mb-1.5">
           <p class="m-0 text-xs font-semibold text-slate-800">
             {{ ev.fromStatus ? (STATUSES[ev.fromStatus]?.l || ev.fromStatus) : '─' }}
@@ -289,9 +290,10 @@ function copyDraft() {
           <p v-if="ev.note" class="m-0 text-xs text-slate-600">{{ ev.note }}</p>
         </div>
         <p v-if="!item.events?.length" class="text-xs text-slate-400">履歴はまだありません</p>
+        </div>
       </div>
 
-      <div v-else-if="tab === 'reply'">
+      <div v-else-if="tab === 'reply'" class="lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
         <div class="cb-card mb-2">
           <p class="mb-2 text-[11px] font-semibold text-slate-500">発注者からの返信を貼り付け</p>
           <textarea v-model="replyBody" class="cb-input min-h-[120px]" placeholder="返信文をそのまま貼り付け..." />
@@ -328,15 +330,18 @@ function copyDraft() {
           新規に診断フローを開く（再診断）
         </button>
         <p class="mb-3 text-xs text-slate-500">条件変更後は上書きせず、新しい診断バージョンを残します。既存バージョン:</p>
-        <div v-for="v in item.diagnosisVersions" :key="v.id" class="cb-card mb-1.5">
-          <p class="m-0 text-xs font-semibold text-slate-800">v{{ v.version }} · {{ v.recommendation || v.userDecision || '記録' }}</p>
-          <p class="m-0 text-[11px] text-slate-400">{{ v.createdAt.slice(0, 16).replace('T', ' ') }}</p>
-          <p v-if="v.recommendationReason" class="m-0 mt-1 text-xs text-slate-600">{{ v.recommendationReason }}</p>
+        <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <div v-for="v in item.diagnosisVersions" :key="v.id" class="cb-card mb-0">
+            <p class="m-0 text-xs font-semibold text-slate-800">v{{ v.version }} · {{ v.recommendation || v.userDecision || '記録' }}</p>
+            <p class="m-0 text-[11px] text-slate-400">{{ v.createdAt.slice(0, 16).replace('T', ' ') }}</p>
+            <p v-if="v.recommendationReason" class="m-0 mt-1 text-xs text-slate-600">{{ v.recommendationReason }}</p>
+          </div>
         </div>
         <p v-if="!item.diagnosisVersions?.length" class="text-xs text-slate-400">診断バージョンはまだありません</p>
       </div>
 
-      <div v-else-if="tab === 'work'">
+      <div v-else-if="tab === 'work'" class="lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
+        <div>
         <div class="cb-card mb-2">
           <p class="mb-1 text-[11px] font-semibold text-slate-500">合計 {{ workTotalMin }} 分（{{ (workTotalMin / 60).toFixed(1) }}h）</p>
           <p v-if="variance != null" class="m-0 text-xs text-slate-600">
@@ -358,15 +363,18 @@ function copyDraft() {
           <p v-if="workError" class="mb-2 text-xs text-red-600">{{ workError }}</p>
           <button class="cb-cta" @click="submitWork">作業時間を追加</button>
         </div>
+        </div>
+        <div>
         <div v-for="w in item.workLogs" :key="w.id" class="cb-card mb-1.5">
           <p class="m-0 text-xs font-semibold text-slate-800">{{ w.category }} · {{ w.minutes }}分</p>
           <p class="m-0 text-[11px] text-slate-400">{{ w.workedOn }}</p>
           <p v-if="w.note" class="m-0 text-xs text-slate-600">{{ w.note }}</p>
         </div>
+        </div>
       </div>
 
       <div v-else>
-        <div class="cb-card mb-2">
+        <div class="cb-card mb-2 lg:max-w-xl">
           <label class="cb-label">契約額（円）</label>
           <input v-model.number="contractYen" class="cb-input" type="number" min="0">
           <label class="cb-label">源泉徴収（円）</label>

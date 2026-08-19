@@ -398,9 +398,9 @@ async function doSkip(reason: string) {
 
 <template>
   <div v-if="loading" class="cb-page">
-    <div class="mt-20 text-center">
+    <div class="flex min-h-[50vh] flex-col items-center justify-center text-center">
       <div class="cb-spinner" />
-      <p class="mt-4 text-sm font-semibold text-slate-700">{{ loadMsg }}</p>
+      <p class="mt-4 text-sm font-semibold text-slate-700 lg:text-base">{{ loadMsg }}</p>
     </div>
   </div>
   <DiagnoseStepInput

@@ -132,7 +132,7 @@ const statuses = Object.keys(REQUIREMENT_EVIDENCE_LABELS) as RequirementEvidence
   <div class="cb-page">
     <button class="cb-back" @click="$emit('back')">← 入力に戻る</button>
     <h1 class="cb-h1">抽出結果の確認</h1>
-    <p class="mb-2.5 text-xs text-slate-500">推定は「確定にする」まで診断計算に使いません。文言も修正できます。</p>
+    <p class="cb-lead">推定は「確定にする」まで診断計算に使いません。文言も修正できます。</p>
 
     <template v-if="!local">
       <p>抽出に失敗しました。</p>
@@ -140,6 +140,7 @@ const statuses = Object.keys(REQUIREMENT_EVIDENCE_LABELS) as RequirementEvidence
     </template>
 
     <template v-else>
+      <div class="lg:grid lg:grid-cols-2 lg:items-start lg:gap-4">
       <div v-for="[label, data] in arraySections" :key="label" class="cb-card mb-1.5">
         <p class="mb-1 text-[11px] font-semibold text-slate-500">{{ label }}</p>
         <div v-for="(it, i) in data" :key="i" class="mb-2">
@@ -219,7 +220,10 @@ const statuses = Object.keys(REQUIREMENT_EVIDENCE_LABELS) as RequirementEvidence
         <p v-for="(u, i) in local.unknowns" :key="i" class="my-0.5 text-xs text-slate-700">• {{ u }}</p>
       </div>
 
-      <button class="cb-cta" @click="$emit('next')">安全チェック・工数見積りへ</button>
+      </div>
+      <div class="cb-actions">
+        <button class="cb-cta" @click="$emit('next')">安全チェック・工数見積りへ</button>
+      </div>
     </template>
   </div>
 </template>

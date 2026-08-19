@@ -57,7 +57,21 @@ const interestLabel = computed(() => {
     </template>
 
     <template v-else>
-      <div v-if="isOther" class="cb-card mb-2">
+      <div class="lg:grid lg:grid-cols-12 lg:items-start lg:gap-6">
+        <div class="lg:col-span-7">
+          <div class="cb-card mb-2.5">
+            <p class="m-0 whitespace-pre-wrap text-[13px] leading-loose text-slate-700 lg:text-sm lg:leading-8">{{ proposal.body }}</p>
+            <p class="m-0 mt-2 text-right text-[11px] text-slate-400">{{ charCount }}字</p>
+            <p
+              v-if="isYoutrust && charCount > 200"
+              class="m-0 mt-1 text-right text-[11px] text-red-600"
+            >
+              YouTrustは200字以内である必要があります
+            </p>
+          </div>
+        </div>
+        <div class="lg:col-span-5">
+          <div v-if="isOther" class="cb-card mb-2">
         <p class="mb-2 text-[11px] font-semibold text-slate-500">文の長さ</p>
         <div class="flex gap-2">
           <button
@@ -85,17 +99,6 @@ const interestLabel = computed(() => {
         <p class="m-0 mt-1 text-xs text-slate-500">{{ proposal.strategyReason }}</p>
         <p v-if="interestLabel" class="m-0 mt-1 text-xs font-semibold text-blue-700">
           推奨興味対象: {{ interestLabel }}
-        </p>
-      </div>
-
-      <div class="cb-card mb-2.5">
-        <p class="m-0 whitespace-pre-wrap text-[13px] leading-loose text-slate-700">{{ proposal.body }}</p>
-        <p class="m-0 mt-2 text-right text-[11px] text-slate-400">{{ charCount }}字</p>
-        <p
-          v-if="isYoutrust && charCount > 200"
-          class="m-0 mt-1 text-right text-[11px] text-red-600"
-        >
-          YouTrustは200字以内である必要があります
         </p>
       </div>
 
@@ -142,7 +145,10 @@ const interestLabel = computed(() => {
           {{ regenerating ? '再生成中...' : 'この型で再生成' }}
         </button>
       </div>
+        </div>
+      </div>
 
+      <div class="cb-actions">
       <button class="cb-cta bg-green-600" @click="$emit('copy')">
         <CbIcon :d="Icons.copy" :size="16" color="#fff" />
         {{ copied ? 'コピーしました' : (isInterest ? 'メッセージをコピー' : '提案文をコピー') }}
@@ -150,7 +156,8 @@ const interestLabel = computed(() => {
       <button class="cb-outline-btn" @click="showApplyConfirm = true">
         {{ isYoutrust || proposal.documentType === 'youtrust_message' ? '送信済みとして記録する' : '応募済みとして記録する' }}
       </button>
-      <p class="mt-2 text-center text-[11px] text-slate-400">コピーだけでは応募済みになりません</p>
+      <p class="mt-2 w-full text-[11px] text-slate-400 lg:mt-0 lg:w-auto">コピーだけでは応募済みになりません</p>
+      </div>
 
       <div v-if="showApplyConfirm" class="fixed inset-0 z-[200] flex items-end justify-center bg-black/40 p-4 sm:items-center">
         <div class="w-full max-w-[400px] rounded-2xl bg-white p-5">

@@ -177,8 +177,10 @@ async function onLogout() {
 <template>
   <div class="cb-page">
     <h1 class="cb-h1">自分</h1>
-    <p class="mb-4 text-xs text-slate-500">稼働条件と実績を登録すると、診断と提案文の精度が上がります。</p>
+    <p class="cb-lead">稼働条件と実績を登録すると、診断と提案文の精度が上がります。</p>
 
+    <div class="lg:grid lg:grid-cols-2 lg:items-start lg:gap-10">
+    <div>
     <section class="mb-4">
       <p class="mb-2 text-[13px] font-bold text-slate-900">基本情報</p>
       <label class="cb-label">名前（提案文での名乗り）</label>
@@ -257,6 +259,8 @@ async function onLogout() {
       <input class="cb-input" :value="na.result" placeholder="成果（数字入り）" @input="na = { ...na, result: ($event.target as HTMLInputElement).value }">
       <button class="cb-outline-btn" @click="addAchievement">実績を追加</button>
     </section>
+    </div>
+    <div>
 
     <section class="mb-4">
       <p class="mb-2 text-[13px] font-bold text-slate-900">関心のある技術・企業・領域</p>
@@ -412,7 +416,11 @@ async function onLogout() {
       </div>
       <p class="mt-2 text-[11px] text-slate-400">上限到達後も手動入力・既存データでの運用は継続できます。</p>
     </section>
+    </div>
+    </div>
 
+    <div class="cb-actions">
     <button class="cb-cta mt-4" @click="doSave">{{ ok ? '✓ 保存しました' : '保存' }}</button>
+    </div>
   </div>
 </template>

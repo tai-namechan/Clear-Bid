@@ -60,66 +60,64 @@ const generateLabel = computed(() => {
     </template>
 
     <template v-else>
-      <div class="cb-card mb-2.5">
-        <p class="mb-1.5 text-[11px] font-semibold text-slate-500">応募判断</p>
-        <div
-          v-if="actionMeta"
-          class="mb-2 rounded-xl p-3"
-          :style="{ background: actionMeta.bg, border: `1.5px solid ${actionMeta.c}` }"
-        >
-          <div class="flex items-center gap-2">
-            <span class="text-base font-extrabold" :style="{ color: actionMeta.c }">{{ actionMeta.ic }}</span>
-            <p class="m-0 text-base font-extrabold" :style="{ color: actionMeta.c }">{{ actionMeta.t }}</p>
-          </div>
-        </div>
-        <div class="mb-2 grid grid-cols-2 gap-2">
-          <div class="rounded-lg bg-slate-50 p-2">
-            <p class="m-0 text-[10px] text-slate-500">応募優先度</p>
-            <p class="m-0 text-sm font-bold" :style="{ color: priorityMeta?.c || '#64748b' }">
-              {{ priorityMeta?.t || '—' }}
-            </p>
-          </div>
-          <div class="rounded-lg bg-slate-50 p-2">
-            <p class="m-0 text-[10px] text-slate-500">総合スコア</p>
-            <p class="m-0 text-sm font-bold text-slate-800">
-              {{ diag.overallScore != null ? diag.overallScore : '—' }}
-            </p>
-          </div>
-          <div class="rounded-lg bg-slate-50 p-2">
-            <p class="m-0 text-[10px] text-slate-500">判定ラベル</p>
-            <p class="m-0 text-sm font-bold text-slate-800">{{ diag.existingLabel || '—' }}</p>
-          </div>
-          <div
-            class="rounded-lg p-2"
-            :style="{
-              background: (REC[diag.recommendation] || REC.question).bg,
-            }"
-          >
-            <p class="m-0 text-[10px] text-slate-500">従来推奨</p>
-            <p
-              class="m-0 text-sm font-bold"
-              :style="{ color: (REC[diag.recommendation] || REC.question).c }"
+      <div class="lg:grid lg:grid-cols-12 lg:items-start lg:gap-6">
+        <div class="lg:col-span-5">
+          <div class="cb-card mb-2.5">
+            <p class="mb-1.5 text-[11px] font-semibold text-slate-500">応募判断</p>
+            <div
+              v-if="actionMeta"
+              class="mb-2 rounded-xl p-3"
+              :style="{ background: actionMeta.bg, border: `1.5px solid ${actionMeta.c}` }"
             >
-              {{ (REC[diag.recommendation] || REC.question).t }}
+              <div class="flex items-center gap-2">
+                <span class="text-base font-extrabold" :style="{ color: actionMeta.c }">{{ actionMeta.ic }}</span>
+                <p class="m-0 text-base font-extrabold" :style="{ color: actionMeta.c }">{{ actionMeta.t }}</p>
+              </div>
+            </div>
+            <div class="mb-2 grid grid-cols-2 gap-2">
+              <div class="rounded-lg bg-slate-50 p-2">
+                <p class="m-0 text-[10px] text-slate-500">応募優先度</p>
+                <p class="m-0 text-sm font-bold" :style="{ color: priorityMeta?.c || '#64748b' }">
+                  {{ priorityMeta?.t || '—' }}
+                </p>
+              </div>
+              <div class="rounded-lg bg-slate-50 p-2">
+                <p class="m-0 text-[10px] text-slate-500">判定ラベル</p>
+                <p class="m-0 text-sm font-bold text-slate-800">{{ diag.existingLabel || '—' }}</p>
+              </div>
+              <div
+                class="col-span-2 rounded-lg p-2"
+                :style="{
+                  background: (REC[diag.recommendation] || REC.question).bg,
+                }"
+              >
+                <p class="m-0 text-[10px] text-slate-500">従来推奨</p>
+                <p
+                  class="m-0 text-sm font-bold"
+                  :style="{ color: (REC[diag.recommendation] || REC.question).c }"
+                >
+                  {{ (REC[diag.recommendation] || REC.question).t }}
+                </p>
+              </div>
+            </div>
+            <p class="m-0 text-[13px] leading-relaxed text-slate-700">
+              {{ diag.decisionReason || diag.recommendationReason }}
             </p>
           </div>
         </div>
-        <p class="m-0 text-[13px] leading-relaxed text-slate-700">
-          {{ diag.decisionReason || diag.recommendationReason }}
-        </p>
-      </div>
 
-      <div v-if="diag.matchedExperiences?.length" class="cb-card mb-2">
-        <p class="mb-1.5 text-[11px] font-semibold text-slate-500">経験との接点</p>
-        <div
-          v-for="(m, i) in diag.matchedExperiences.slice(0, 3)"
-          :key="i"
-          class="mb-1.5 border-t border-slate-100 pt-1.5"
-        >
-          <p class="m-0 text-xs font-semibold text-slate-800">{{ m.text }}</p>
-          <p class="m-0 text-[11px] text-slate-500">根拠: {{ m.evidenceSource }}</p>
-        </div>
-      </div>
+        <div class="lg:col-span-7">
+          <div v-if="diag.matchedExperiences?.length" class="cb-card mb-2">
+            <p class="mb-1.5 text-[11px] font-semibold text-slate-500">経験との接点</p>
+            <div
+              v-for="(m, i) in diag.matchedExperiences.slice(0, 3)"
+              :key="i"
+              class="mb-1.5 border-t border-slate-100 pt-1.5"
+            >
+              <p class="m-0 text-xs font-semibold text-slate-800">{{ m.text }}</p>
+              <p class="m-0 text-[11px] text-slate-500">根拠: {{ m.evidenceSource }}</p>
+            </div>
+          </div>
 
       <div v-if="diag.gaps?.length || diag.conditionRisks?.length" class="cb-card mb-2 border-l-[3px] border-l-amber-500">
         <p class="mb-1 text-[11px] font-semibold text-amber-700">足りない点</p>
@@ -199,7 +197,23 @@ const generateLabel = computed(() => {
         <p v-for="(q, i) in consultantChecks" :key="i" class="my-1 text-xs leading-snug text-slate-700">• {{ q }}</p>
       </div>
 
-      <div v-for="(ax, i) in diag.axes" :key="i" class="cb-card mb-1.5">
+      <div v-if="diag.clientIntent" class="cb-card mb-2 bg-slate-50">
+        <p class="mb-1.5 text-[11px] font-semibold text-slate-500">発注者の意図（AI推定）</p>
+        <p v-if="diag.clientIntent.underlyingProblem" class="my-0.5 text-xs leading-snug text-slate-700">
+          <span class="font-semibold text-slate-500">課題:</span> {{ diag.clientIntent.underlyingProblem }}
+        </p>
+        <p v-if="diag.clientIntent.selectionPriority" class="my-0.5 text-xs leading-snug text-slate-700">
+          <span class="font-semibold text-slate-500">重視:</span> {{ diag.clientIntent.selectionPriority }}
+        </p>
+        <p v-if="diag.clientIntent.concerns" class="my-0.5 text-xs leading-snug text-slate-700">
+          <span class="font-semibold text-slate-500">不安:</span> {{ diag.clientIntent.concerns }}
+        </p>
+      </div>
+        </div>
+      </div>
+
+      <div class="mt-2 grid grid-cols-1 gap-3 lg:grid-cols-2">
+      <div v-for="(ax, i) in diag.axes" :key="i" class="cb-card mb-0">
         <div class="mb-1 flex items-center justify-between">
           <span class="text-[13px] font-bold text-slate-900">
             {{ (AXIS_LABELS[ax.axis as keyof typeof AXIS_LABELS] || { n: ax.axis }).n }}
@@ -222,20 +236,9 @@ const generateLabel = computed(() => {
           ⚠ 不足: {{ ax.missing.join('、') }}
         </p>
       </div>
-
-      <div v-if="diag.clientIntent" class="cb-card mb-2 bg-slate-50">
-        <p class="mb-1.5 text-[11px] font-semibold text-slate-500">発注者の意図（AI推定）</p>
-        <p v-if="diag.clientIntent.underlyingProblem" class="my-0.5 text-xs leading-snug text-slate-700">
-          <span class="font-semibold text-slate-500">課題:</span> {{ diag.clientIntent.underlyingProblem }}
-        </p>
-        <p v-if="diag.clientIntent.selectionPriority" class="my-0.5 text-xs leading-snug text-slate-700">
-          <span class="font-semibold text-slate-500">重視:</span> {{ diag.clientIntent.selectionPriority }}
-        </p>
-        <p v-if="diag.clientIntent.concerns" class="my-0.5 text-xs leading-snug text-slate-700">
-          <span class="font-semibold text-slate-500">不安:</span> {{ diag.clientIntent.concerns }}
-        </p>
       </div>
 
+      <div class="cb-actions">
       <button
         class="cb-cta"
         :disabled="canGenerate === false"
@@ -243,10 +246,11 @@ const generateLabel = computed(() => {
       >
         {{ generateLabel }}
       </button>
-      <p v-if="canGenerate === false" class="mt-2 text-center text-[11px] text-amber-600">
+      <p v-if="canGenerate === false" class="w-full text-[11px] text-amber-600 lg:w-auto">
         必須要件の経験有無を確認すると、実績を誇張せず応募文を作れます。
       </p>
       <button class="cb-outline-btn" @click="$emit('skip')">見送りとして記録</button>
+      </div>
     </template>
   </div>
 </template>

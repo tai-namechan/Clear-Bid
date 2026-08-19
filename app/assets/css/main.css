@@ -4,8 +4,18 @@
 
 @layer base {
   html,
+  body,
+  #__nuxt {
+    @apply h-full;
+  }
+
+  html,
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    @apply bg-slate-50 text-slate-900 antialiased lg:overflow-hidden;
+    background-image: url('/images/cb-bg-wash.png');
+    background-size: cover;
+    background-attachment: fixed;
+    background-position: center;
     font-family:
       -apple-system,
       'Hiragino Sans',
@@ -20,44 +30,73 @@
 }
 
 @layer components {
-  .cb-shell {
-    @apply mx-auto flex min-h-screen max-w-[430px] flex-col bg-slate-50;
+  .cb-app {
+    @apply flex min-h-full w-full flex-col bg-transparent lg:h-full lg:flex-row lg:overflow-hidden;
+  }
+
+  .cb-main {
+    @apply min-h-0 min-w-0 flex-1 overflow-y-auto pb-[88px] lg:h-full lg:pb-0;
   }
 
   .cb-page {
-    @apply px-4 pb-4 pt-5;
+    @apply mx-auto w-full max-w-[1100px] px-4 pb-6 pt-5 sm:px-6 lg:px-10 lg:pb-12 lg:pt-9;
   }
 
   .cb-card {
-    @apply rounded-[14px] border border-slate-200 bg-white px-4 py-3.5 shadow-sm;
+    @apply rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm lg:px-5 lg:py-4;
   }
 
   .cb-cta {
-    @apply mt-3 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border-none bg-blue-500 px-3.5 py-3.5 text-sm font-bold text-white shadow-[0_2px_8px_rgba(59,130,246,0.25)] disabled:cursor-not-allowed disabled:opacity-40;
+    @apply mt-3 inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border-none bg-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-[0_2px_8px_rgba(37,99,235,0.25)] disabled:cursor-not-allowed disabled:opacity-40 lg:mt-4 lg:w-auto lg:min-w-[220px] lg:px-6;
   }
 
   .cb-outline-btn {
-    @apply mt-2 w-full cursor-pointer rounded-xl border-[1.5px] border-slate-200 bg-white px-3 py-3 text-center text-[13px] font-semibold text-slate-700;
+    @apply mt-2 inline-flex w-full cursor-pointer items-center justify-center rounded-xl border-[1.5px] border-slate-200 bg-white px-3 py-3 text-center text-[13px] font-semibold text-slate-700 lg:w-auto lg:min-w-[180px] lg:px-5;
   }
 
   .cb-input {
-    @apply mb-2 box-border w-full rounded-[10px] border border-slate-200 bg-white px-3 py-2.5 text-[13px] text-slate-900 outline-none focus:border-blue-400;
+    @apply mb-2 box-border w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-[13px] text-slate-900 outline-none focus:border-blue-500 lg:py-3 lg:text-sm;
   }
 
   .cb-label {
-    @apply mb-1 block text-[11px] font-semibold text-slate-500;
+    @apply mb-1 block text-[11px] font-semibold text-slate-500 lg:text-xs;
   }
 
   .cb-h1 {
-    @apply mb-1 text-lg font-extrabold text-slate-900;
+    @apply mb-1 text-xl font-extrabold tracking-tight text-slate-900 lg:text-3xl;
+  }
+
+  .cb-lead {
+    @apply mb-5 text-[13px] leading-relaxed text-slate-500 lg:max-w-2xl lg:text-base;
   }
 
   .cb-back {
-    @apply mb-1 cursor-pointer border-none bg-transparent p-0 text-[13px] text-slate-400;
+    @apply mb-2 cursor-pointer border-none bg-transparent p-0 text-[13px] text-slate-400 lg:text-sm;
   }
 
   .cb-link {
-    @apply flex cursor-pointer items-center gap-0.5 border-none bg-transparent p-0 text-xs font-semibold text-blue-500;
+    @apply inline-flex cursor-pointer items-center gap-0.5 border-none bg-transparent p-0 text-xs font-semibold text-blue-600 lg:text-sm;
+  }
+
+  .cb-section-title {
+    @apply mb-3 text-sm font-bold text-slate-900 lg:text-base;
+  }
+
+  .cb-grid-2 {
+    @apply grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-5;
+  }
+
+  .cb-grid-3 {
+    @apply grid grid-cols-2 gap-2 sm:grid-cols-3 lg:gap-4;
+  }
+
+  .cb-actions {
+    @apply mt-4 flex flex-col lg:flex-row lg:flex-wrap lg:items-center lg:gap-3;
+  }
+
+  .cb-actions > .cb-cta,
+  .cb-actions > .cb-outline-btn {
+    @apply mt-0;
   }
 }
 
@@ -72,7 +111,7 @@
   height: 28px;
   margin: 0 auto;
   border: 3px solid #e2e8f0;
-  border-top-color: #3b82f6;
+  border-top-color: #2563eb;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }

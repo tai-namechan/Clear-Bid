@@ -8,7 +8,7 @@ defineProps<{
 </script>
 
 <template>
-  <div class="cb-card mt-2">
+  <div class="cb-card mt-0 h-full transition hover:border-blue-200">
     <div class="mb-1 flex items-center justify-between">
       <div class="flex items-center gap-1.5">
         <span

@@ -62,72 +62,74 @@ const isFlexy = computed(() => inp.value.platform === 'flexy')
 <template>
   <div class="cb-page">
     <h1 class="cb-h1">案件を診断する</h1>
-    <p class="mb-4 text-[13px] leading-relaxed text-slate-500">
-      募集文を貼り付けて、応募すべきか見極めます。
-    </p>
+    <p class="cb-lead">募集文を貼り付けて、応募すべきか見極めます。</p>
 
-    <label class="cb-label">募集媒体</label>
-    <select
-      class="cb-input"
-      :value="inp.platform"
-      @change="onPlatformChange(($event.target as HTMLSelectElement).value as JobInput['platform'])"
-    >
-      <option v-for="(label, key) in PLATFORMS" :key="key" :value="key">{{ label }}</option>
-    </select>
+    <div class="lg:grid lg:grid-cols-12 lg:items-start lg:gap-10">
+      <div class="lg:col-span-7">
+        <label class="cb-label">案件タイトル *</label>
+        <input
+          class="cb-input"
+          :value="inp.title"
+          placeholder="例: 業務システムの改善支援"
+          @input="u('title', ($event.target as HTMLInputElement).value)"
+          @blur="maybeInferPlatform"
+        >
 
-    <label class="cb-label">案件タイトル *</label>
-    <input
-      class="cb-input"
-      :value="inp.title"
-      placeholder="例: 業務システムの改善支援"
-      @input="u('title', ($event.target as HTMLInputElement).value)"
-      @blur="maybeInferPlatform"
-    >
+        <label class="cb-label">募集詳細 *</label>
+        <textarea
+          class="cb-input min-h-[200px] resize-y leading-relaxed lg:min-h-[320px] lg:text-sm"
+          rows="8"
+          :value="inp.body"
+          placeholder="募集文をそのまま貼り付け..."
+          @input="u('body', ($event.target as HTMLTextAreaElement).value)"
+          @blur="maybeInferPlatform"
+        />
 
-    <label class="cb-label">会社名</label>
-    <input
-      class="cb-input"
-      :value="inp.companyName || ''"
-      placeholder="任意"
-      @input="u('companyName', ($event.target as HTMLInputElement).value)"
-    >
+        <label class="cb-label">募集URL（任意）</label>
+        <input
+          class="cb-input"
+          type="url"
+          :value="inp.url || ''"
+          placeholder="https://..."
+          @input="u('url', ($event.target as HTMLInputElement).value)"
+          @blur="maybeInferPlatform"
+        >
+      </div>
 
-    <label class="cb-label">募集者名（任意）</label>
-    <input
-      class="cb-input"
-      :value="inp.recruiterName || ''"
-      placeholder="任意"
-      @input="u('recruiterName', ($event.target as HTMLInputElement).value)"
-    >
+      <div class="lg:col-span-5">
+        <label class="cb-label">募集媒体</label>
+        <select
+          class="cb-input"
+          :value="inp.platform"
+          @change="onPlatformChange(($event.target as HTMLSelectElement).value as JobInput['platform'])"
+        >
+          <option v-for="(label, key) in PLATFORMS" :key="key" :value="key">{{ label }}</option>
+        </select>
 
-    <label class="cb-label">募集詳細 *</label>
-    <textarea
-      class="cb-input min-h-[160px] resize-y leading-relaxed"
-      rows="8"
-      :value="inp.body"
-      placeholder="募集文をそのまま貼り付け..."
-      @input="u('body', ($event.target as HTMLTextAreaElement).value)"
-      @blur="maybeInferPlatform"
-    />
+        <label class="cb-label">会社名</label>
+        <input
+          class="cb-input"
+          :value="inp.companyName || ''"
+          placeholder="任意"
+          @input="u('companyName', ($event.target as HTMLInputElement).value)"
+        >
 
-    <label class="cb-label">募集URL（任意）</label>
-    <input
-      class="cb-input"
-      type="url"
-      :value="inp.url || ''"
-      placeholder="https://..."
-      @input="u('url', ($event.target as HTMLInputElement).value)"
-      @blur="maybeInferPlatform"
-    >
+        <label class="cb-label">募集者名（任意）</label>
+        <input
+          class="cb-input"
+          :value="inp.recruiterName || ''"
+          placeholder="任意"
+          @input="u('recruiterName', ($event.target as HTMLInputElement).value)"
+        >
 
-    <label class="cb-label">応募形式</label>
-    <select
-      class="cb-input"
-      :value="inp.applicationType || 'unknown'"
-      @change="u('applicationType', ($event.target as HTMLSelectElement).value as JobInput['applicationType'])"
-    >
-      <option v-for="(label, key) in APPLICATION_TYPES" :key="key" :value="key">{{ label }}</option>
-    </select>
+        <label class="cb-label">応募形式</label>
+        <select
+          class="cb-input"
+          :value="inp.applicationType || 'unknown'"
+          @change="u('applicationType', ($event.target as HTMLSelectElement).value as JobInput['applicationType'])"
+        >
+          <option v-for="(label, key) in APPLICATION_TYPES" :key="key" :value="key">{{ label }}</option>
+        </select>
 
     <div v-if="isFlexy" class="cb-card mb-3 border border-blue-100 bg-blue-50/40">
       <p class="mb-2 text-[13px] font-bold text-slate-900">FLEXY案件条件</p>
@@ -227,6 +229,8 @@ const isFlexy = computed(() => inp.value.platform === 'flexy')
       </div>
     </div>
 
-    <button class="cb-cta" :disabled="!ok" @click="emit('submit')">募集内容を整理する</button>
+        <button class="cb-cta" :disabled="!ok" @click="emit('submit')">募集内容を整理する</button>
+      </div>
+    </div>
   </div>
 </template>

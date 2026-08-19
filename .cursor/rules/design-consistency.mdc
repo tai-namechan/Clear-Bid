@@ -8,7 +8,8 @@ alwaysApply: true
 ## 前提
 
 - Tailwind CSS（`@nuxtjs/tailwindcss`）を使用する
-- モバイルファースト。コンテンツ最大幅 **430px**
+- モバイルファースト。`lg`（1024px）以上はサイドナビ、未満はボトムナビ
+- コンテンツ最大幅 **1100px**（シェル全体は 1440px）
 - デザイントークン / 共通クラスの正: `app/assets/css/main.css`
 - Clear Dawn の `resources/css/app.css` や shadcn/reka-ui 前提を持ち込まない
 
@@ -29,7 +30,7 @@ alwaysApply: true
 
 ## 原則
 
-1. **共通クラスを優先する**: `cb-shell`, `cb-page`, `cb-card`, `cb-cta`, `cb-input` 等
+1. **共通クラスを優先する**: `cb-app`, `cb-main`, `cb-page`, `cb-card`, `cb-cta`, `cb-input`, `cb-lead`, `cb-actions` 等
 2. **直書き hex を増やさない**。既存ユーティリティ / 共通クラスで足りるか先に確認
 3. **1画面1主CTA**
 4. **既存クラスを安易に削除しない**（テストや見た目の回帰）

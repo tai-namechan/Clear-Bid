@@ -1,14 +1,8 @@
 <script setup lang="ts">
-const route = useRoute()
-
-const tabs = [
-  { id: 'index', to: '/', label: 'ホーム', icon: 'home' },
-  { id: 'diagnose', to: '/diagnose', label: '診断', icon: 'search' },
-  { id: 'pipeline', to: '/pipeline', label: '案件', icon: 'grid' },
-  { id: 'profile', to: '/profile', label: '自分', icon: 'user' },
-] as const
-
 import { Icons } from '~/utils/icons'
+import { APP_TABS } from '~/utils/nav'
+
+const route = useRoute()
 
 function isActive(to: string) {
   if (to === '/') return route.path === '/'
@@ -18,19 +12,19 @@ function isActive(to: string) {
 
 <template>
   <nav
-    class="fixed bottom-0 left-1/2 z-50 flex w-full max-w-[430px] -translate-x-1/2 justify-around border-t border-slate-200 bg-white/97 pb-[env(safe-area-inset-bottom,16px)] pt-1.5 backdrop-blur-md"
+    class="fixed inset-x-0 bottom-0 z-50 flex justify-around border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom,12px)] pt-1.5 backdrop-blur-md lg:hidden"
   >
     <NuxtLink
-      v-for="tab in tabs"
+      v-for="tab in APP_TABS"
       :key="tab.id"
       :to="tab.to"
-      class="flex flex-col items-center px-4 py-1"
-      :style="{ color: isActive(tab.to) ? '#3b82f6' : '#94a3b8' }"
+      class="flex min-w-[64px] flex-col items-center px-3 py-1"
+      :class="isActive(tab.to) ? 'text-blue-600' : 'text-slate-400'"
     >
       <CbIcon
         :d="Icons[tab.icon]"
         :size="22"
-        :color="isActive(tab.to) ? '#3b82f6' : '#94a3b8'"
+        :color="isActive(tab.to) ? '#2563eb' : '#94a3b8'"
         :sw="isActive(tab.to) ? 2.2 : 1.8"
       />
       <span

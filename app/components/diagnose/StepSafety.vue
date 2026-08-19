@@ -156,7 +156,7 @@ function updateBuffer(value: string) {
         <CbIcon :d="Icons.clock" :size="16" color="#334155" />
         <p class="m-0 text-[13px] font-bold text-slate-900">工数見積り（編集可）</p>
       </div>
-      <div class="grid items-center gap-x-2 gap-y-1" style="grid-template-columns: 1fr 56px 56px 56px">
+      <div class="grid items-center gap-x-2 gap-y-1 lg:gap-x-4" style="grid-template-columns: 1fr 72px 72px 72px">
         <span class="text-[10px] font-semibold text-slate-400">作業</span>
         <span class="text-right text-[10px] text-slate-400">最短</span>
         <span class="text-right text-[10px] text-slate-400">標準</span>
@@ -184,10 +184,12 @@ function updateBuffer(value: string) {
       <p class="m-0 text-[11px] text-slate-400">{{ localEffort.bufferReason }}</p>
     </div>
 
-    <template v-if="openBlocks.length">
-      <button class="cb-cta mt-3 bg-slate-500" @click="$emit('skip')">この案件を見送る</button>
-      <button class="cb-outline-btn" @click="$emit('next')">リスクを理解して続ける</button>
-    </template>
-    <button v-else class="cb-cta" @click="$emit('next')">この工数で診断する</button>
+    <div class="cb-actions">
+      <template v-if="openBlocks.length">
+        <button class="cb-cta mt-0 bg-slate-500" @click="$emit('skip')">この案件を見送る</button>
+        <button class="cb-outline-btn" @click="$emit('next')">リスクを理解して続ける</button>
+      </template>
+      <button v-else class="cb-cta" @click="$emit('next')">この工数で診断する</button>
+    </div>
   </div>
 </template>
