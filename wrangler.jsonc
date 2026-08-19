@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "clear-bid",
+  "main": "./.output/server/index.mjs",
+  "compatibility_date": "2025-07-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./.output/public",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "clear-bid",
+      "database_id": "038f24ef-f493-4718-803b-37b6e151cd98",
+      "migrations_dir": "db/migrations"
+    }
+  ],
+  "vars": {
+    "NUXT_AI_PROVIDER": "auto",
+    "NUXT_AUTH_BYPASS": "false"
+  }
+}

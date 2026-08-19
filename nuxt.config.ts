@@ -22,23 +22,25 @@ export default defineNuxtConfig({
     },
   },
   runtimeConfig: {
-    anthropicApiKey: process.env.ANTHROPIC_API_KEY || process.env.NUXT_ANTHROPIC_API_KEY || '',
-    aiProvider: process.env.AI_PROVIDER || process.env.NUXT_AI_PROVIDER || 'auto',
-    aiMonthlyBudgetUsd: Number(process.env.AI_MONTHLY_BUDGET_USD || process.env.NUXT_AI_MONTHLY_BUDGET_USD || 3),
-    supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NUXT_SUPABASE_SERVICE_ROLE_KEY || '',
-    allowedEmail: process.env.ALLOWED_EMAIL || process.env.NUXT_ALLOWED_EMAIL || '',
+    anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
+    aiProvider: process.env.AI_PROVIDER || 'auto',
+    aiMonthlyBudgetUsd: Number(process.env.AI_MONTHLY_BUDGET_USD || 3),
+    cfAccessTeamDomain: process.env.CF_ACCESS_TEAM_DOMAIN || '',
+    cfAccessAud: process.env.CF_ACCESS_AUD || '',
     authBypass: process.env.AUTH_BYPASS === '1' || process.env.AUTH_BYPASS === 'true',
     devUserEmail: process.env.DEV_USER_EMAIL || 'dev@local.test',
     public: {
       appName: 'Clear Bid',
-      supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '',
-      supabaseAnonKey: process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '',
     },
   },
   nitro: {
-    preset: 'vercel',
+    preset: 'cloudflare_module',
     experimental: {
       asyncContext: true,
+    },
+    cloudflare: {
+      deployConfig: true,
+      nodeCompat: true,
     },
   },
   typescript: {

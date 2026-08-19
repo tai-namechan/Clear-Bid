@@ -24,14 +24,12 @@ Based on Clear Bid MVP Spec v1.0.
 ### Phase 3 — Acquisition support
 - 提案文・応募確認・型再生成・返信支援・AI Soft Gate
 
-### Production wiring — Supabase Auth + RLS
-- Anthropic provider（`AI_PROVIDER=auto|anthropic` + API key）+ 失敗時フォールバック
-- Supabase Auth（Email/Password）+ `/login`
-- `user_documents` + RLS（`auth.uid() = user_id`）— IDOR 防止
-- API は Bearer JWT 必須。user_id はサーバがトークンから決定
-- localStorage 本体保存を廃止（バックアップ JSON export/import は継続）
-- デプロイ: Vercel（旧 Cloudflare Access/D1/Workers 配線は削除）
-- 手順: `docs/manual/supabase-vercel-migration.md` / `docs/DEPLOY.md`
+### Production wiring — AI / D1 / Access
+- Anthropic provider（`AI_PROVIDER=auto|anthropic` + API key）
+- 失敗時フォールバック provider
+- D1 `user_documents` 同期 API（`/api/sync`）+ store デュアルライト
+- Cloudflare Access JWT 検証（未設定時は AUTH_BYPASS / 開発ユーザー）
+- `/api/me` `/api/health`、デプロイ手順は `docs/DEPLOY.md`
 
 ### FLEXY support
 - Platform `flexy`（表示名 FLEXY、手数料初期値 0%、案件単位で上書き可）

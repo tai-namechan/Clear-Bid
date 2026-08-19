@@ -14,7 +14,7 @@ import type {
   ProposalResult,
   SafetyFinding,
 } from '#shared/schemas/ai'
-import { apiFetch } from '~/composables/useAuth'
+import { STORAGE_KEYS } from '#shared/constants'
 import {
   hasBlockingEvidenceGaps,
   initRequirementEvidences,
@@ -77,14 +77,32 @@ function reset() {
     ...INIT_JOB_INPUT,
     platform: profile.value.platform || 'crowdworks',
   })
+  if (import.meta.client) localStorage.removeItem(STORAGE_KEYS.DRAFT_INPUT)
 }
 
 onMounted(() => {
   if (route.query.reset === '1') {
     reset()
     router.replace('/diagnose')
+    return
+  }
+  if (import.meta.client) {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.DRAFT_INPUT)
+      if (raw) inp.value = normalizeJobInput({ ...INIT_JOB_INPUT, ...JSON.parse(raw) })
+    } catch { /* ignore */ }
   }
 })
+
+watch(
+  inp,
+  (v) => {
+    if (import.meta.client && step.value === 0) {
+      localStorage.setItem(STORAGE_KEYS.DRAFT_INPUT, JSON.stringify(v))
+    }
+  },
+  { deep: true },
+)
 
 async function doExtract() {
   if (!inp.value.title.trim() || !inp.value.body.trim()) return
@@ -97,7 +115,7 @@ async function doExtract() {
   loading.value = true
   loadMsg.value = '募集内容を整理しています...'
   try {
-    const r = await apiFetch<ExtractionResult>('/api/ai/extract', {
+    const r = await $fetch<ExtractionResult>('/api/ai/extract', {
       method: 'POST',
       body: {
         title: inp.value.title,
@@ -130,7 +148,7 @@ async function doSafety() {
   loading.value = true
   loadMsg.value = '安全チェック・工数見積り...'
   try {
-    const r = await apiFetch<{ safety: SafetyFinding[]; effort: EffortEstimate }>('/api/ai/safety-effort', {
+    const r = await $fetch<{ safety: SafetyFinding[]; effort: EffortEstimate }>('/api/ai/safety-effort', {
       method: 'POST',
       body: {
         title: inp.value.title,
@@ -191,7 +209,7 @@ async function doDiag() {
       jobFeeRatePercent: inp.value.feeRatePercent,
       profileFeeRate: profile.value.feeRate,
     })
-    const r = await apiFetch<DiagnosisResult>('/api/ai/diagnose', {
+    const r = await $fetch<DiagnosisResult>('/api/ai/diagnose', {
       method: 'POST',
       body: {
         title: inp.value.title,
@@ -250,7 +268,7 @@ async function doProposal(forceStrategy?: string) {
         : '提案文を作成しています...'
   }
   try {
-    const r = await apiFetch<ProposalResult>('/api/ai/proposal', {
+    const r = await $fetch<ProposalResult>('/api/ai/proposal', {
       method: 'POST',
       body: {
         title: inp.value.title,
